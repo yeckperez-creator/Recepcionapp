@@ -1,11 +1,15 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <title>Recepción con escáner</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b6bcb">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mu:#667085;--ac:#0b6bcb;--acb:#e6f0fb;--ok:#127a3d;--okb:#e3f5ea;--bad:#b42318;--badb:#fdecea;--wr:#9a6700;--wrb:#fff4d6;--bd:#dfe3e8;--sh:rgba(16,24,40,.10);color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101418;--card:#1a2027;--tx:#e8ecf0;--mu:#9aa5b1;--ac:#5aa9ff;--acb:#16273a;--ok:#5fd18a;--okb:#16301f;--bad:#ff8a80;--badb:#3a1c19;--wr:#f2c14e;--wrb:#3a3014;--bd:#2c3540;--sh:rgba(0,0,0,.45);color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#101418;--card:#1a2027;--tx:#e8ecf0;--mu:#9aa5b1;--ac:#5aa9ff;--acb:#16273a;--ok:#5fd18a;--okb:#16301f;--bad:#ff8a80;--badb:#3a1c19;--wr:#f2c14e;--wrb:#3a3014;--bd:#2c3540;--sh:rgba(0,0,0,.45);color-scheme:dark}
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mu:#667085;--ac:#0b6bcb;--acb:#e6f0fb;--ok:#127a3d;--okb:#e3f5ea;--bad:#b42318;--badb:#fdecea;--wr:#9a6700;--wrb:#fff4d6;--bd:#dfe3e8;--sh:rgba(16,24,40,.10);--btx:#fff;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101418;--card:#1a2027;--tx:#e8ecf0;--mu:#9aa5b1;--ac:#5aa9ff;--acb:#16273a;--ok:#5fd18a;--okb:#16301f;--bad:#ff8a80;--badb:#3a1c19;--wr:#f2c14e;--wrb:#3a3014;--bd:#2c3540;--sh:rgba(0,0,0,.45);--btx:#0b1220;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#101418;--card:#1a2027;--tx:#e8ecf0;--mu:#9aa5b1;--ac:#5aa9ff;--acb:#16273a;--ok:#5fd18a;--okb:#16301f;--bad:#ff8a80;--badb:#3a1c19;--wr:#f2c14e;--wrb:#3a3014;--bd:#2c3540;--sh:rgba(0,0,0,.45);--btx:#0b1220;color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:12px;max-width:640px;margin:0 auto}
@@ -14,8 +18,7 @@ h1{font-size:20px;margin:4px 0 12px}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
 label{display:block;font-size:13px;color:var(--mu);margin:8px 0 3px}
 select,input[type=number],input[type=text],input[type=file]{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font-size:16px}
-button{padding:11px 14px;border:0;border-radius:8px;background:var(--ac);color:#fff;font-size:15px;font-weight:600}
-:root[data-theme="dark"] button,:root:not([data-theme="light"]) button{color:#0b1220}
+button{padding:11px 14px;border:0;border-radius:8px;background:var(--ac);color:var(--btx);font-size:15px;font-weight:600}
 button.sec{background:transparent;color:var(--ac);border:1px solid var(--bd)}
 button:disabled{opacity:.4}
 .full{width:100%;margin-top:12px}
@@ -28,7 +31,11 @@ button:disabled{opacity:.4}
 #scan{position:sticky;top:0;z-index:5;box-shadow:0 6px 14px var(--sh)}
 #scan .row button{font-size:14px;padding:10px 6px}
 video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background:#000;display:block}
-#scan.typing video{display:none}
+#scan.typing .vw{display:none}
+.vw{position:relative}
+#torch{position:absolute;top:8px;right:8px;width:46px;height:46px;border-radius:50%;padding:0;font-size:20px;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.4)}
+#torch.on{background:#ffd54a;color:#1b1f24;border-color:#ffd54a;box-shadow:0 0 0 4px rgba(255,213,74,.35)}
+#memo{background:var(--okb);color:var(--ok);padding:8px 10px;border-radius:8px;margin:10px 0 0;font-weight:600}
 .srch{position:relative;margin-top:8px}
 .srch input{padding-right:42px}
 #clr{position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:6px 10px;background:transparent;color:var(--mu);font-size:16px}
@@ -74,6 +81,7 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
 <h1>📦 Recepción con escáner</h1>
 
 <div id="s1">
+  <button id="bInstall" class="full hide" style="margin:0 0 12px">📲 Instalar como app</button>
   <div class="card">
     <p class="h2">Nueva recepción</p>
     <label>Sube tu hoja (Excel, CSV o Word .docx)</label>
@@ -86,6 +94,7 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
       <label>Descripción</label><select id="cD"></select>
       <label>Cantidad esperada (cajas/bultos). Si no hay, cada escaneo completa la línea</label><select id="cQ"></select>
       <p class="mu">Puedes escanear cualquiera de los dos códigos. Ambos se verán en cada línea.</p>
+      <p id="memo" class="hide">✔ Usé las columnas de la última vez. Revisa y toca Empezar.</p>
       <button id="bGo" class="full">Empezar recepción</button>
     </div>
   </div>
@@ -97,7 +106,7 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
 
 <div id="s2" class="hide">
   <div class="card" id="scan">
-    <video id="v" playsinline muted class="hide"></video>
+    <div class="vw"><video id="v" playsinline muted class="hide"></video><button id="torch" class="hide" aria-label="Linterna">🔦</button></div>
     <div class="row" style="margin-top:8px">
       <button id="bCam">📷 Cámara</button>
       <button id="bPhoto" class="sec">📸 Foto</button>
@@ -186,7 +195,7 @@ $('#f').onchange=async e=>{
     else if(/\.doc$/i.test(file.name)){alert('Ese es un Word antiguo (.doc). Ábrelo y guárdalo como .docx o como Excel.');return}
     else{const wb=XLSX.read(buf,{type:'array'});rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''})}
     if(!rows.length)throw 0;
-    $('#hr').value=1;$('#map').classList.remove('hide');fillSel();
+    $('#hr').value=detectHeader();$('#map').classList.remove('hide');fillSel();
   }catch(err){alert(/\.docx$/i.test(file.name)?'No encontré una tabla en ese Word. La hoja debe estar dentro de una tabla.':'No pude leer el archivo. Prueba guardándolo como .xlsx o .csv')}
 };
 function readDocx(buf){
@@ -207,6 +216,26 @@ function readDocx(buf){
   return [].concat(...tables.filter(t=>nc(t)===n));
 }
 $('#hr').oninput=fillSel;
+function detectHeader(){
+  const p=db.prefs,lim=Math.min(rows.length,25),cl=r=>(rows[r]||[]).map(x=>fold(String(x).trim()));
+  if(p){const need=[p.k,p.i,p.d,p.q].filter(Boolean).map(fold);
+    if(need.length)for(let r=0;r<lim;r++){const c=cl(r);if(need.every(n=>c.includes(n)))return r+1}}
+  const re=/c[oó]d|desc|cant|[ií]tem|art[ií]culo|barra|contenedor|producto|bulto|caja|sku|ean|upc|qty/i;
+  for(let r=0;r<lim;r++)if((rows[r]||[]).filter(x=>re.test(String(x))).length>=2)return r+1;
+  return 1;
+}
+/* Columnas recordadas: busca por el nombre del encabezado de la última vez */
+function applyPrefs(h){
+  const p=db.prefs;if(!p)return false;
+  const cells=h.map(x=>fold(String(x).trim())),out={};
+  for(const f of ['k','i','d','q']){
+    const idx=p[f+'x'],nm=p[f];
+    if(idx===-1){out[f]=-1;continue}
+    if(nm){const j=cells.indexOf(fold(nm));if(j<0)return false;out[f]=j}
+    else if(idx<h.length)out[f]=idx;else return false;
+  }
+  $('#cK').value=out.k;$('#cI').value=out.i;$('#cD').value=out.d;$('#cQ').value=out.q;return true;
+}
 function fillSel(){
   const h=rows[Math.max(0,(+$('#hr').value||1)-1)]||[];
   const opt=h.map((x,i)=>'<option value="'+i+'">'+esc(String(x).trim()||'Columna '+(i+1))+'</option>').join(''),none='<option value="-1">— ninguna —</option>';
@@ -217,6 +246,7 @@ function fillSel(){
   let d=g(/desc|nombre|prod/i,[k,it]);if(d<0)d=Math.max(0,h.findIndex((x,i)=>i!==k&&i!==it));
   const qn=g(/cant|qty|unid|caja|bulto/i,[k,it,d]);
   $('#cK').value=k;$('#cI').value=it;$('#cD').value=d;$('#cQ').value=qn;
+  $('#memo').classList.toggle('hide',!applyPrefs(h));
 }
 $('#bGo').onclick=()=>{
   const hi=(+$('#hr').value||1)-1,k=+$('#cK').value,ic=+$('#cI').value,d=+$('#cD').value,qc=+$('#cQ').value;
@@ -225,6 +255,8 @@ $('#bGo').onclick=()=>{
   const its=rows.slice(hi+1).filter(r=>r.join('|')!==hk).map(r=>{const cont=k>=0?s(r[k]):'',item=ic>=0?s(r[ic]):'';
     return{cont,item,nc:norm(cont),ni:norm(item),desc:s(r[d]),exp:qc>=0?(parseFloat(s(r[qc]).replace(',','.'))||1):1,got:0}}).filter(x=>x.nc||x.ni);
   if(!its.length){alert('No encontré códigos en esas columnas. Revisa la fila de encabezados y las columnas.');return}
+  const hh=rows[hi]||[],nm=x=>x>=0?String(hh[x]==null?'':hh[x]).trim():'';
+  db.prefs={hr:hi+1,k:nm(k),i:nm(ic),d:nm(d),q:nm(qc),kx:k,ix:ic,dx:d,qx:qc};
   const r={id:uid(),name:fname||'Recepción',date:Date.now(),items:its,extras:[],ops:[],cols:{cont:k>=0,item:ic>=0}};
   db.list.unshift(r);if(db.list.length>MAXREC)db.list.length=MAXREC;persist();openRec(r.id);
 };
@@ -429,7 +461,7 @@ async function startCam(){
   const v=$('#v');
   try{
     stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
-    v.srcObject=stream;v.classList.remove('hide');await v.play();$('#bCam').textContent='⏹ Detener';
+    v.srcObject=stream;v.classList.remove('hide');await v.play();$('#bCam').textContent='⏹ Detener';$('#torch').classList.remove('hide');
     if('BarcodeDetector' in window){det=new BarcodeDetector();loop=true;tick()}
     else{stopStream();await loadZX();zx=new ZXing.BrowserMultiFormatReader();v.classList.remove('hide');$('#bCam').textContent='⏹ Detener';zx.decodeFromVideoDevice(null,'v',r=>{if(r)onFrame([r.getText()],'cam')})}
     if(!msgRef)idle();
@@ -437,7 +469,33 @@ async function startCam(){
 }
 async function tick(){if(!loop)return;try{const r=await det.detect($('#v'));if(r.length)onFrame(r.map(x=>x.rawValue),'cam')}catch(e){}setTimeout(tick,150)}
 function stopStream(){loop=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
-function stopCam(){stopStream();if(zx){try{zx.reset()}catch(e){}zx=null}$('#v').classList.add('hide');$('#bCam').textContent='📷 Cámara';if(!msgRef&&rec)idle()}
+function stopCam(){torchOff();stopStream();if(zx){try{zx.reset()}catch(e){}zx=null}$('#v').classList.add('hide');$('#torch').classList.add('hide');$('#bCam').textContent='📷 Cámara';if(!msgRef&&rec)idle()}
+
+/* ---------- Linterna ---------- */
+let torchOn=false;
+const vTrack=()=>{const s=$('#v').srcObject;return s&&s.getVideoTracks?s.getVideoTracks()[0]:null};
+function torchOff(){if(torchOn){const t=vTrack();try{t&&t.applyConstraints({advanced:[{torch:false}]})}catch(e){}}torchOn=false;$('#torch').classList.remove('on')}
+async function setTorch(on){
+  const t=vTrack();
+  if(!t||t.readyState!=='live'){say('Abre la cámara para usar la linterna.','info');return}
+  try{
+    const c=t.getCapabilities?t.getCapabilities():{};
+    if(!c.torch)throw new Error('sin linterna');
+    await t.applyConstraints({advanced:[{torch:on}]});
+    const st=t.getSettings?t.getSettings():{};
+    if('torch' in st&&st.torch!==on)throw new Error('no cambió');
+    torchOn=on;$('#torch').classList.toggle('on',on);
+  }catch(e){torchOn=false;$('#torch').classList.remove('on');
+    if(on)say('Tu celular no deja encender la linterna desde la cámara del navegador. Usa 📸 Foto con flash.','bad')}
+}
+$('#torch').onclick=()=>setTorch(!torchOn);
+
+/* ---------- App instalable y sin conexión ---------- */
+let instEvt=null;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();instEvt=e;$('#bInstall').classList.remove('hide')});
+addEventListener('appinstalled',()=>{instEvt=null;$('#bInstall').classList.add('hide')});
+$('#bInstall').onclick=async()=>{if(!instEvt)return;instEvt.prompt();try{await instEvt.userChoice}catch(e){}instEvt=null;$('#bInstall').classList.add('hide')};
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 loadDB();renderHome();
 </script>
