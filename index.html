@@ -35,7 +35,6 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
 .vw{position:relative}
 #torch{position:absolute;top:8px;right:8px;width:46px;height:46px;border-radius:50%;padding:0;font-size:20px;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.4)}
 #torch.on{background:#ffd54a;color:#1b1f24;border-color:#ffd54a;box-shadow:0 0 0 4px rgba(255,213,74,.35)}
-#memo{background:var(--okb);color:var(--ok);padding:8px 10px;border-radius:8px;margin:10px 0 0;font-weight:600}
 .srch{position:relative;margin-top:8px}
 .srch input{padding-right:42px}
 #clr{position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:6px 10px;background:transparent;color:var(--mu);font-size:16px}
@@ -94,7 +93,6 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
       <label>Descripción</label><select id="cD"></select>
       <label>Cantidad esperada (cajas/bultos). Si no hay, cada escaneo completa la línea</label><select id="cQ"></select>
       <p class="mu">Puedes escanear cualquiera de los dos códigos. Ambos se verán en cada línea.</p>
-      <p id="memo" class="hide">✔ Usé las columnas de la última vez. Revisa y toca Empezar.</p>
       <button id="bGo" class="full">Empezar recepción</button>
     </div>
   </div>
@@ -155,6 +153,7 @@ function persist(){try{localStorage.setItem(STORE,JSON.stringify(db));return tru
 function save(){if(rec)rec.upd=Date.now();persist()}
 function loadDB(){
   try{const d=JSON.parse(localStorage.getItem(STORE)||'null');if(d&&Array.isArray(d.list))db=d}catch(e){}
+  if(db.prefs){delete db.prefs;persist()}
   if(db.list.length)return;
   try{const o=JSON.parse(localStorage.getItem(OLD)||'null');
     if(o&&o.items&&o.items.length){
@@ -195,7 +194,7 @@ $('#f').onchange=async e=>{
     else if(/\.doc$/i.test(file.name)){alert('Ese es un Word antiguo (.doc). Ábrelo y guárdalo como .docx o como Excel.');return}
     else{const wb=XLSX.read(buf,{type:'array'});rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''})}
     if(!rows.length)throw 0;
-    $('#hr').value=detectHeader();$('#map').classList.remove('hide');fillSel();
+    $('#hr').value=1;$('#map').classList.remove('hide');fillSel();
   }catch(err){alert(/\.docx$/i.test(file.name)?'No encontré una tabla en ese Word. La hoja debe estar dentro de una tabla.':'No pude leer el archivo. Prueba guardándolo como .xlsx o .csv')}
 };
 function readDocx(buf){
@@ -216,26 +215,6 @@ function readDocx(buf){
   return [].concat(...tables.filter(t=>nc(t)===n));
 }
 $('#hr').oninput=fillSel;
-function detectHeader(){
-  const p=db.prefs,lim=Math.min(rows.length,25),cl=r=>(rows[r]||[]).map(x=>fold(String(x).trim()));
-  if(p){const need=[p.k,p.i,p.d,p.q].filter(Boolean).map(fold);
-    if(need.length)for(let r=0;r<lim;r++){const c=cl(r);if(need.every(n=>c.includes(n)))return r+1}}
-  const re=/c[oó]d|desc|cant|[ií]tem|art[ií]culo|barra|contenedor|producto|bulto|caja|sku|ean|upc|qty/i;
-  for(let r=0;r<lim;r++)if((rows[r]||[]).filter(x=>re.test(String(x))).length>=2)return r+1;
-  return 1;
-}
-/* Columnas recordadas: busca por el nombre del encabezado de la última vez */
-function applyPrefs(h){
-  const p=db.prefs;if(!p)return false;
-  const cells=h.map(x=>fold(String(x).trim())),out={};
-  for(const f of ['k','i','d','q']){
-    const idx=p[f+'x'],nm=p[f];
-    if(idx===-1){out[f]=-1;continue}
-    if(nm){const j=cells.indexOf(fold(nm));if(j<0)return false;out[f]=j}
-    else if(idx<h.length)out[f]=idx;else return false;
-  }
-  $('#cK').value=out.k;$('#cI').value=out.i;$('#cD').value=out.d;$('#cQ').value=out.q;return true;
-}
 function fillSel(){
   const h=rows[Math.max(0,(+$('#hr').value||1)-1)]||[];
   const opt=h.map((x,i)=>'<option value="'+i+'">'+esc(String(x).trim()||'Columna '+(i+1))+'</option>').join(''),none='<option value="-1">— ninguna —</option>';
@@ -246,7 +225,6 @@ function fillSel(){
   let d=g(/desc|nombre|prod/i,[k,it]);if(d<0)d=Math.max(0,h.findIndex((x,i)=>i!==k&&i!==it));
   const qn=g(/cant|qty|unid|caja|bulto/i,[k,it,d]);
   $('#cK').value=k;$('#cI').value=it;$('#cD').value=d;$('#cQ').value=qn;
-  $('#memo').classList.toggle('hide',!applyPrefs(h));
 }
 $('#bGo').onclick=()=>{
   const hi=(+$('#hr').value||1)-1,k=+$('#cK').value,ic=+$('#cI').value,d=+$('#cD').value,qc=+$('#cQ').value;
@@ -255,8 +233,6 @@ $('#bGo').onclick=()=>{
   const its=rows.slice(hi+1).filter(r=>r.join('|')!==hk).map(r=>{const cont=k>=0?s(r[k]):'',item=ic>=0?s(r[ic]):'';
     return{cont,item,nc:norm(cont),ni:norm(item),desc:s(r[d]),exp:qc>=0?(parseFloat(s(r[qc]).replace(',','.'))||1):1,got:0}}).filter(x=>x.nc||x.ni);
   if(!its.length){alert('No encontré códigos en esas columnas. Revisa la fila de encabezados y las columnas.');return}
-  const hh=rows[hi]||[],nm=x=>x>=0?String(hh[x]==null?'':hh[x]).trim():'';
-  db.prefs={hr:hi+1,k:nm(k),i:nm(ic),d:nm(d),q:nm(qc),kx:k,ix:ic,dx:d,qx:qc};
   const r={id:uid(),name:fname||'Recepción',date:Date.now(),items:its,extras:[],ops:[],cols:{cont:k>=0,item:ic>=0}};
   db.list.unshift(r);if(db.list.length>MAXREC)db.list.length=MAXREC;persist();openRec(r.id);
 };
@@ -457,38 +433,80 @@ $('#ph').onchange=async e=>{
   }catch(err){say('No detecté ningún código en la foto. Prueba más cerca y con luz.','bad')}
 };
 function loadZX(){return window.ZXing?Promise.resolve():new Promise((ok,ko)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';s.onload=ok;s.onerror=ko;document.head.appendChild(s)})}
+/* ---------- Cámara ---------- */
+const CAMKEY='recepcion-camara';let gen=0;
+function camPref(){try{return localStorage.getItem(CAMKEY)||''}catch(e){return ''}}
+function setCamPref(id){try{id?localStorage.setItem(CAMKEY,id):localStorage.removeItem(CAMKEY)}catch(e){}}
+function openStream(id){
+  const size={width:{ideal:1280},height:{ideal:720}};
+  return navigator.mediaDevices.getUserMedia({audio:false,video:id?{deviceId:{exact:id},...size}:{facingMode:{ideal:'environment'},...size}});
+}
+async function attach(s){const v=$('#v');stream=s;v.srcObject=s;v.classList.remove('hide');try{await v.play()}catch(e){}$('#torch').classList.remove('hide')}
+function startLoop(){if(!det)return;loop=true;const g=++gen;tick(g)}
 async function startCam(){
-  const v=$('#v');
   try{
-    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
-    v.srcObject=stream;v.classList.remove('hide');await v.play();$('#bCam').textContent='⏹ Detener';$('#torch').classList.remove('hide');
-    if('BarcodeDetector' in window){det=new BarcodeDetector();loop=true;tick()}
-    else{stopStream();await loadZX();zx=new ZXing.BrowserMultiFormatReader();v.classList.remove('hide');$('#bCam').textContent='⏹ Detener';zx.decodeFromVideoDevice(null,'v',r=>{if(r)onFrame([r.getText()],'cam')})}
+    const pref=camPref();let s;
+    try{s=await openStream(pref)}catch(e){if(!pref)throw e;setCamPref('');s=await openStream('')}
+    await attach(s);$('#bCam').textContent='⏹ Detener';
+    if('BarcodeDetector' in window){det=det||new BarcodeDetector();startLoop()}
+    else{const tr=s.getVideoTracks()[0],id=(tr&&tr.getSettings&&tr.getSettings().deviceId)||null;stopStream();await loadZX();zx=new ZXing.BrowserMultiFormatReader();$('#v').classList.remove('hide');$('#bCam').textContent='⏹ Detener';zx.decodeFromVideoDevice(id,'v',r=>{if(r)onFrame([r.getText()],'cam')})}
     if(!msgRef)idle();
   }catch(e){say('Cámara bloqueada ('+(e&&e.name||'error')+'). Usa 📸 Foto o el buscador.','bad')}
 }
-async function tick(){if(!loop)return;try{const r=await det.detect($('#v'));if(r.length)onFrame(r.map(x=>x.rawValue),'cam')}catch(e){}setTimeout(tick,150)}
-function stopStream(){loop=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
+async function tick(g){if(!loop||g!==gen)return;try{const r=await det.detect($('#v'));if(loop&&g===gen&&r.length)onFrame(r.map(x=>x.rawValue),'cam')}catch(e){}setTimeout(()=>tick(g),150)}
+function stopStream(){loop=false;gen++;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
 function stopCam(){torchOff();stopStream();if(zx){try{zx.reset()}catch(e){}zx=null}$('#v').classList.add('hide');$('#torch').classList.add('hide');$('#bCam').textContent='📷 Cámara';if(!msgRef&&rec)idle()}
 
 /* ---------- Linterna ---------- */
-let torchOn=false;
+let torchOn=false,torchBusy=false;
 const vTrack=()=>{const s=$('#v').srcObject;return s&&s.getVideoTracks?s.getVideoTracks()[0]:null};
-function torchOff(){if(torchOn){const t=vTrack();try{t&&t.applyConstraints({advanced:[{torch:false}]})}catch(e){}}torchOn=false;$('#torch').classList.remove('on')}
+const live=t=>!!t&&t.readyState==='live';
+/* En varios Android la linterna solo aparece después de consultar la cámara de fotos */
+async function torchCap(t){
+  try{if(window.ImageCapture)await new ImageCapture(t).getPhotoCapabilities()}catch(e){}
+  let c={};try{c=t.getCapabilities?t.getCapabilities():{}}catch(e){}
+  if(c.torch)return true;
+  await new Promise(r=>setTimeout(r,300));
+  try{c=t.getCapabilities()}catch(e){}
+  return !!c.torch;
+}
+function torchOff(){if(torchOn){const t=vTrack();if(live(t))t.applyConstraints({advanced:[{torch:false}]}).catch(()=>{})}torchOn=false;$('#torch').classList.remove('on')}
+/* Si la cámara abierta no tiene linterna, prueba las otras cámaras traseras y se queda con la que sí tiene */
+async function torchCamera(){
+  const cur=vTrack(),curId=(cur&&cur.getSettings&&cur.getSettings().deviceId)||'';
+  let devs=[];
+  try{devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput'&&d.deviceId&&d.deviceId!==curId&&!/front|frontal|user|delantera|selfie/i.test(d.label))}catch(e){}
+  if(!devs.length)return{t:null,tried:0};
+  stopStream();let tried=0;
+  for(const d of devs){
+    let s=null;tried++;
+    try{s=await openStream(d.deviceId);const t=s.getVideoTracks()[0];
+      if(await torchCap(t)){await attach(s);setCamPref(d.deviceId);startLoop();return{t,tried}}}catch(e){}
+    if(s)s.getTracks().forEach(x=>x.stop());
+  }
+  try{await attach(await openStream(curId))}catch(e){try{await attach(await openStream(''))}catch(e2){}}
+  startLoop();return{t:null,tried};
+}
 async function setTorch(on){
-  const t=vTrack();
-  if(!t||t.readyState!=='live'){say('Abre la cámara para usar la linterna.','info');return}
+  if(torchBusy)return;
+  let t=vTrack();
+  if(!live(t)){say('Abre la cámara para usar la linterna.','info');return}
+  torchBusy=true;$('#torch').disabled=true;
   try{
-    const c=t.getCapabilities?t.getCapabilities():{};
-    if(!c.torch)throw new Error('sin linterna');
-    await t.applyConstraints({advanced:[{torch:on}]});
-    const st=t.getSettings?t.getSettings():{};
-    if('torch' in st&&st.torch!==on)throw new Error('no cambió');
-    torchOn=on;$('#torch').classList.toggle('on',on);
-  }catch(e){torchOn=false;$('#torch').classList.remove('on');
-    if(on)say('Tu celular no deja encender la linterna desde la cámara del navegador. Usa 📸 Foto con flash.','bad')}
+    if(!on){await t.applyConstraints({advanced:[{torch:false}]}).catch(()=>{});torchOn=false;$('#torch').classList.remove('on');return}
+    let ok=await torchCap(t),tried=0;
+    if(!ok&&!zx){say('Buscando la cámara que tiene linterna…','info');const r=await torchCamera();tried=r.tried;t=r.t;ok=!!t}
+    if(!ok)throw{tried};
+    await t.applyConstraints({advanced:[{torch:true}]});
+    torchOn=true;$('#torch').classList.add('on');idle();
+  }catch(e){
+    torchOn=false;$('#torch').classList.remove('on');
+    const n=1+((e&&e.tried)||0);
+    say('Tu celular no deja usar la linterna desde el navegador (probé '+n+(n===1?' cámara':' cámaras')+'). Usa 📸 Foto con flash.','bad');
+  }finally{torchBusy=false;$('#torch').disabled=false}
 }
 $('#torch').onclick=()=>setTorch(!torchOn);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&torchOn&&!live(vTrack())){torchOn=false;$('#torch').classList.remove('on')}});
 
 /* ---------- App instalable y sin conexión ---------- */
 let instEvt=null;
