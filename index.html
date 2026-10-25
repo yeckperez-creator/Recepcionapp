@@ -314,7 +314,7 @@ button.chip{padding:6px 10px}
     <div id="rname"></div>
     <div id="prog"><b></b></div>
     <div class="bar"><div id="pb"></div></div>
-    <div class="tabs"><button data-f="all" class="on">Todos</button><button data-f="pend">Pendientes</button><button data-f="done">Listos</button></div>
+    <div class="tabs" id="rTabs"><button data-f="all" class="on">Todos</button><button data-f="pend">Pendientes</button><button data-f="done">Listos</button></div>
     <p id="qinfo" class="hide"></p>
     <div id="list"></div>
     <div id="extras" class="hide"><p class="mu" style="margin-top:14px"><b>No están en la hoja:</b></p><div id="exl"></div></div>
@@ -501,9 +501,9 @@ $('#exl').onclick=e=>{
 };
 $('#exl').oninput=e=>{const t=e.target.closest('.xd');if(!t)return;const x=extras.find(z=>z.id===t.dataset.id);if(x){x.desc=t.value;save()}};
 $('#qinfo').onclick=e=>{if(e.target.closest('[data-go]'))setTab('all')};
-function setTabUI(f){filt=f;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x.dataset.f===f))}
+function setTabUI(f){filt=f;document.querySelectorAll('#rTabs button').forEach(x=>x.classList.toggle('on',x.dataset.f===f))}
 function setTab(f){setTabUI(f);render();toList()}
-document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.f)};
+$('#rTabs').onclick=e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.f)};
 
 /* ---------- Desplazamiento ---------- */
 const hdr=()=>$('#scan').offsetHeight;
