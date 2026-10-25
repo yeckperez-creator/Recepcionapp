@@ -73,14 +73,58 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
 .lnk{background:transparent;color:var(--ac);padding:0;font-size:13px;text-decoration:underline}
 .hr button{flex:none}
 #up{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:48px;height:48px;border-radius:50%;padding:0;font-size:20px;box-shadow:0 4px 12px var(--sh);z-index:6}
+.seg{display:flex;gap:6px;margin-bottom:12px}
+.seg button{flex:1;padding:10px;font-size:15px}
+.seg button:not(.on){background:transparent;color:var(--mu);border:1px solid var(--bd)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:4px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--bd);font-size:13px;font-weight:600}
+.chip.ok{background:var(--okb);color:var(--ok);border-color:var(--ok)}
+.chip.bad{background:var(--wrb);color:var(--wr);border-color:var(--wr)}
+.tok{color:var(--ok);font-weight:600}
+.tbad{color:var(--bad);font-weight:600}
+.ln{border:1px solid var(--bd);border-radius:10px;padding:8px;margin-bottom:8px;background:var(--card)}
+.ln.warn{border-color:var(--wr);background:var(--wrb)}
+.ln .lc{font-size:16px;font-weight:700}
+.lp{font-weight:600;margin:6px 0 2px;overflow-wrap:anywhere}
+.lnq{margin-top:6px;gap:6px;flex-wrap:wrap}
+.lnq>*{flex:none}
+.lqn{width:64px!important;text-align:center;font-weight:700}
+.lqn.wq{border-color:var(--wr);background:var(--wrb)}
+.lpk{width:auto!important;padding:8px!important}
+.lu{font-weight:600}
+.rvimg{max-height:260px;overflow:auto;border-radius:8px;background:#000}
+.rvimg:empty{display:none}
+.rvimg img{display:block;width:100%}
+.rvimg img.big{width:250%}
+.totbox{position:sticky;bottom:0;z-index:4;box-shadow:0 -6px 14px var(--sh)}
+#rvTot{font-size:18px;font-weight:700;text-align:center;width:78px!important;padding:6px!important}
+.totbox{padding:10px 12px}
+.tt{gap:8px}
+.tt>*{flex:none}
+.tt>b{flex:1}
+.tts{font-size:13px;margin-top:4px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.mbox{background:var(--card);width:100%;max-width:640px;max-height:85vh;border-radius:14px 14px 0 0;padding:12px;display:flex;flex-direction:column;gap:6px}
+.mlist{overflow:auto;flex:1}
+.mlist .it{cursor:pointer}
+.busy{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:30;display:flex;align-items:center;justify-content:center;padding:16px}
+.bbox{background:var(--card);border-radius:12px;padding:18px;max-width:320px;text-align:center}
+.spin{width:36px;height:36px;border:4px solid var(--bd);border-top-color:var(--ac);border-radius:50%;margin:0 auto 10px;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hn{width:70px!important;text-align:center;font-weight:700;padding:8px!important}
+.hn.wq{border-color:var(--wr);background:var(--wrb)}
+.hjimg{display:flex;gap:6px;overflow-x:auto;max-height:300px}
+.hjimg img{width:auto;max-height:300px;flex:none}
 .hide{display:none!important}
 .mu{color:var(--mu);font-size:13px}
 </style></head>
 <body>
-<h1>📦 Recepción con escáner</h1>
+<h1 id="ttl">📦 Recepción con escáner</h1>
 
 <div id="s1">
   <button id="bInstall" class="full hide" style="margin:0 0 12px">📲 Instalar como app</button>
+  <div class="seg" id="seg"><button data-sec="rec" class="on">📦 Recepción</button><button data-sec="fac">🧾 Facturas</button></div>
+  <div id="secRec">
   <div class="card">
     <p class="h2">Nueva recepción</p>
     <label>Sube tu hoja (Excel, CSV o Word .docx)</label>
@@ -100,7 +144,75 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
     <p class="h2">Recepciones guardadas</p>
     <div id="hl"></div>
   </div>
+  </div>
+  <div id="secFac" class="hide">
+    <div class="card">
+      <p class="h2">Nueva verificación</p>
+      <label>Sube la hoja de Oracle (Direct Delivery Report)</label>
+      <input type="file" id="fddr" accept="application/pdf,.pdf,image/*" multiple>
+      <p class="mu">Sirve el PDF escaneado, el PDF de Oracle o una foto. Si subes el reporte diario completo, la app busca las hojas de cada orden y las facturas de Pepsi que estén en el mismo archivo.</p>
+    </div>
+    <div class="card hide" id="vhist"><p class="h2">Órdenes verificadas</p><div id="vl"></div></div>
+  </div>
 </div>
+
+<div id="s3" class="hide">
+  <div class="card">
+    <div class="row tools"><button id="vBack" class="sec">← Órdenes</button><button id="vShare" class="sec">📤 Resumen</button><button id="vXls" class="sec">⬇ Excel</button></div>
+    <div id="vHead"></div>
+  </div>
+  <div class="card">
+    <p class="h2">Facturas</p>
+    <div id="fl"></div>
+    <div class="row" style="margin-top:8px"><button id="bFacCam">📸 Foto</button><button id="bFacGal" class="sec">🖼 Galería o PDF</button><button id="bFacMan" class="sec">✍ A mano</button></div>
+    <input type="file" id="ffcam" accept="image/*" capture="environment" class="hide">
+    <input type="file" id="ffgal" accept="image/*,application/pdf,.pdf" multiple class="hide">
+    <p id="vMsg" class="mu hide"></p>
+  </div>
+  <div class="card">
+    <p class="h2">Resultado</p>
+    <div id="vSum"></div>
+    <div id="vRes" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div id="s4" class="hide">
+  <div class="card">
+    <p class="h2">Revisa la factura</p>
+    <div id="rvImg" class="rvimg"></div>
+    <button id="rvRot" class="sec sm hide" style="margin-top:6px">⟳ Girar y leer de nuevo</button>
+    <label>N° de factura</label><input type="text" id="rvNum" inputmode="numeric">
+    <p id="rvPoW" class="tbad" style="margin:6px 0 0"></p>
+  </div>
+  <div class="card">
+    <p class="mu" style="margin:0 0 8px">Compara con el papel. Las líneas en amarillo tienen dudas: revisa código, cajas y unidades por caja.</p>
+    <div id="rvL"></div>
+    <div class="row" style="margin-top:4px"><button id="rvAddH" class="sec">+ Producto de la hoja</button><button id="rvAdd" class="sec">+ Escribir código</button></div>
+  </div>
+  <div class="card totbox">
+    <div class="row tt"><b>Suma: <span id="rvSum">0</span> cajas</b><span class="mu">Total en factura</span><input type="number" id="rvTot" inputmode="numeric" placeholder="?" aria-label="TOTAL PRODUCTOS de la factura"></div>
+    <div id="rvTotS" class="tts"></div>
+    <div class="row" style="margin-top:8px"><button id="rvCancel" class="sec">Cancelar</button><button id="rvSave">Guardar factura</button></div>
+  </div>
+</div>
+
+<div id="s5" class="hide">
+  <div class="card">
+    <p class="h2">Hoja de Oracle</p>
+    <div id="hjImg" class="rvimg hjimg"></div>
+    <label>Orden (PO Number)</label><input type="text" id="hjPo" inputmode="numeric">
+    <p class="mu" style="margin:8px 0 0">Compara con el papel. Las filas en amarillo tienen dudas. Solo importan de verdad las que están en las facturas.</p>
+  </div>
+  <div class="card"><div id="hjL"></div><button id="hjAdd" class="sec full">+ Agregar fila</button></div>
+  <div class="card totbox">
+    <div class="row tt"><b>Recibido: <span id="hjSum">0</span> und</b></div>
+    <div id="hjTotS" class="tts"></div>
+    <div class="row" style="margin-top:8px"><button id="hjCancel" class="sec">Cancelar</button><button id="hjSave">Guardar hoja</button></div>
+  </div>
+</div>
+
+<div id="pk" class="modal hide"><div class="mbox"><div class="row"><b style="flex:1">Elige el producto de la hoja</b><button id="pkX" class="sec sm" aria-label="Cerrar">✕</button></div><p id="pkHint" class="mu" style="margin:0"></p><input type="text" id="pkQ" placeholder="🔍 Buscar"><div id="pkL" class="mlist"></div></div></div>
+<div id="busy" class="busy hide"><div class="bbox"><div class="spin"></div><p id="busyT" style="margin:0">Procesando…</p></div></div>
 
 <div id="s2" class="hide">
   <div class="card" id="scan">
@@ -154,6 +266,7 @@ function save(){if(rec)rec.upd=Date.now();persist()}
 function loadDB(){
   try{const d=JSON.parse(localStorage.getItem(STORE)||'null');if(d&&Array.isArray(d.list))db=d}catch(e){}
   if(db.prefs){delete db.prefs;persist()}
+  db.fac=db.fac||[];db.eq=db.eq||{};db.items=db.items||{};
   if(db.list.length)return;
   try{const o=JSON.parse(localStorage.getItem(OLD)||'null');
     if(o&&o.items&&o.items.length){
@@ -182,7 +295,7 @@ function openRec(id){
   $('#s1').classList.add('hide');$('#s2').classList.remove('hide');$('#rname').textContent=rec.name+' · '+fdate(rec.date);
   render();updUndo();idle();scrollTo(0,0);startCam();
 }
-function goHome(){stopCam();pairing=null;rec=null;$('#s2').classList.add('hide');$('#s1').classList.remove('hide');$('#map').classList.add('hide');$('#f').value='';renderHome();scrollTo(0,0)}
+function goHome(){stopCam();pairing=null;rec=null;['#s2','#s3','#s4','#s5'].forEach(x=>$(x).classList.add('hide'));$('#s1').classList.remove('hide');$('#map').classList.add('hide');$('#f').value='';renderHome();scrollTo(0,0)}
 $('#bHome').onclick=goHome;
 
 /* ---------- Lectura de la hoja (Excel, CSV o Word) ---------- */
@@ -320,7 +433,7 @@ document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('button');i
 const hdr=()=>$('#scan').offsetHeight;
 function goTo(i){const el=document.getElementById('r'+i);if(!el)return;const r=el.getBoundingClientRect(),h=hdr();if(r.top<h+8||r.bottom>innerHeight-8)scrollTo({top:scrollY+r.top-h-16,behavior:'smooth'})}
 function toList(){const r=$('#lc').getBoundingClientRect(),h=hdr();if(r.top<h)scrollTo({top:scrollY+r.top-h-8,behavior:'smooth'})}
-addEventListener('scroll',()=>$('#up').classList.toggle('hide',scrollY<400),{passive:true});
+addEventListener('scroll',()=>$('#up').classList.toggle('hide',scrollY<400||$('#s2').classList.contains('hide')),{passive:true});
 $('#up').onclick=()=>scrollTo({top:0,behavior:'smooth'});
 
 /* ---------- Escaneo ---------- */
@@ -516,5 +629,963 @@ $('#bInstall').onclick=async()=>{if(!instEvt)return;instEvt.prompt();try{await i
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 loadDB();renderHome();
+</script>
+<script>
+/* Lectura de facturas en papel (Pepsi y formato similar).
+   Usa Tesseract.js. Devuelve líneas {code, desc, cant, pack, flags}. */
+const FOCR = (() => {
+  const TESS = {
+    workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
+    corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
+    langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int'
+  };
+  let worker = null, loading = null;
+  async function getWorker(prog) {
+    if (worker) return worker;
+    if (!loading) loading = (async () => {
+      prog && prog('Preparando el lector (la primera vez descarga ~7 MB)…');
+      const w = await Tesseract.createWorker('eng', 1, { ...TESS, logger: m => { if (prog && m.status && m.progress != null && /load|initializ/i.test(m.status)) prog('Preparando el lector… ' + Math.round(m.progress * 100) + '%'); } });
+      worker = w; return w;
+    })();
+    return loading;
+  }
+  const fixDigits = t => String(t || '').replace(/[Oo]/g, '0').replace(/[lI|!]/g, '1').replace(/[S$]/g, '5').replace(/B/g, '8').replace(/Z/g, '2').replace(/[^0-9]/g, '');
+  const nonDigitCount = t => String(t || '').replace(/[0-9OolI|!S$BZ]/g, '').length;
+
+  function rotCanvas(src, deg, maxSide) {
+    const r = ((deg % 360) + 360) % 360, sw = src.width, sh = src.height;
+    const sc = Math.min(1, maxSide / Math.max(sw, sh));
+    const w = Math.round(sw * sc), h = Math.round(sh * sc);
+    const c = document.createElement('canvas');
+    c.width = (r === 90 || r === 270) ? h : w; c.height = (r === 90 || r === 270) ? w : h;
+    const g = c.getContext('2d');
+    g.translate(c.width / 2, c.height / 2); g.rotate(r * Math.PI / 180);
+    g.drawImage(src, -w / 2, -h / 2, w, h);
+    return c;
+  }
+  function words(data) {
+    (data.lines || []).forEach((l, i) => (l.words || []).forEach(w => { w._ln = i; }));
+    return (data.words || []).filter(w => w.text && w.text.trim()).map(w => {
+      const b = w.bbox; return { text: w.text.trim(), conf: w.confidence, ln: w._ln, left: b.x0, top: b.y0, right: b.x1, bottom: b.y1,
+        width: b.x1 - b.x0, height: b.y1 - b.y0, cx: (b.x0 + b.x1) / 2, cy: (b.y0 + b.y1) / 2 };
+    });
+  }
+  const median = a => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+
+  async function orient(src, w, prog, force) {
+    if (force != null) return force;
+    const cands = src.width >= src.height ? [0, 180] : [270, 90];
+    let best = null;
+    for (const r of cands) {
+      prog && prog('Detectando orientación…');
+      const c = rotCanvas(src, r, 1400);
+      const { data } = await w.recognize(c);
+      const sc = words(data).filter(x => x.conf > 60 && /[A-Za-z]{3,}|\d{4,}/.test(x.text)).length;
+      if (!best || sc > best.sc) best = { r, sc };
+      if (sc >= 30) break;
+    }
+    return best.r;
+  }
+
+  /* Binariza y amplía un recorte para leer dígitos sueltos */
+  function cellCanvas(src, x0, y0, x1, y1, SS) {
+    x0 = Math.max(0, Math.round(x0)); y0 = Math.max(0, Math.round(y0));
+    x1 = Math.min(src.width, Math.round(x1)); y1 = Math.min(src.height, Math.round(y1));
+    const w = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0), S = SS || 3, P = 25;
+    const c = document.createElement('canvas'); c.width = w * S + 2 * P; c.height = h * S + 2 * P;
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    g.imageSmoothingQuality = 'high'; g.drawImage(src, x0, y0, w, h, P, P, w * S, h * S);
+    const id = g.getImageData(P, P, w * S, h * S), d = id.data;
+    let mn = 255, mx = 0; const L = new Uint8Array(d.length / 4);
+    for (let i = 0; i < L.length; i++) { const v = (d[i * 4] * 299 + d[i * 4 + 1] * 587 + d[i * 4 + 2] * 114) / 1000; L[i] = v; if (v < mn) mn = v; if (v > mx) mx = v; }
+    adaptive(L, w * S, h * S, d, mn, mx);
+    g.putImageData(id, P, P);
+    return c;
+  }
+  /* Umbral adaptativo: compara cada píxel con el promedio de su vecindad (aguanta sombras) */
+  function adaptive(L, W, H, d, mn, mx) {
+    const I = new Float64Array((W + 1) * (H + 1)), r = Math.max(8, Math.round(Math.min(W, H) / 6));
+    for (let y = 0; y < H; y++) { let row = 0; for (let x = 0; x < W; x++) { row += L[y * W + x]; I[(y + 1) * (W + 1) + x + 1] = I[y * (W + 1) + x + 1] + row; } }
+    const flat = (mx - mn) < 40;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const x0 = Math.max(0, x - r), x1 = Math.min(W - 1, x + r), y0 = Math.max(0, y - r), y1 = Math.min(H - 1, y + r);
+      const n = (x1 - x0 + 1) * (y1 - y0 + 1), sum = I[(y1 + 1) * (W + 1) + x1 + 1] - I[y0 * (W + 1) + x1 + 1] - I[(y1 + 1) * (W + 1) + x0] + I[y0 * (W + 1) + x0];
+      const v = L[y * W + x], on = !flat && v < (sum / n) * 0.82 && v < mn + (mx - mn) * 0.75;
+      const k = (y * W + x) * 4; d[k] = d[k + 1] = d[k + 2] = on ? 0 : 255; d[k + 3] = 255;
+    }
+  }
+  /* Recorte en gris, ampliado, sin las líneas de la tabla (para la hoja de Oracle) */
+  function grayCell(src, x0, y0, x1, y1, SS) {
+    x0 = Math.max(0, Math.round(x0)); y0 = Math.max(0, Math.round(y0)); x1 = Math.min(src.width, Math.round(x1)); y1 = Math.min(src.height, Math.round(y1));
+    const w = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0), S = SS || 2, P = 20, W2 = w * S, H2 = h * S;
+    const c = document.createElement('canvas'); c.width = W2 + 2 * P; c.height = H2 + 2 * P;
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.imageSmoothingQuality = 'high'; g.drawImage(src, x0, y0, w, h, P, P, W2, H2);
+    const id = g.getImageData(P, P, W2, H2), d = id.data, L = new Float32Array(W2 * H2); let mn = 255, mx = 0;
+    for (let i = 0; i < L.length; i++) { const v = (d[i * 4] * 299 + d[i * 4 + 1] * 587 + d[i * 4 + 2] * 114) / 1000; L[i] = v; if (v < mn) mn = v; if (v > mx) mx = v; }
+    const thr = mn + (mx - mn) * 0.6, kill = new Uint8Array(W2 * H2);
+    for (let y = 0; y < H2; y++) { let n = 0; for (let x = 0; x < W2; x++) if (L[y * W2 + x] < thr) n++; if (n > W2 * 0.5) for (let yy = Math.max(0, y - S); yy <= Math.min(H2 - 1, y + S); yy++) for (let x = 0; x < W2; x++) kill[yy * W2 + x] = 1; }
+    for (let x = 0; x < W2; x++) { let n = 0; for (let y = 0; y < H2; y++) if (L[y * W2 + x] < thr) n++; if (n > H2 * 0.5) for (let xx = Math.max(0, x - S); xx <= Math.min(W2 - 1, x + S); xx++) for (let y = 0; y < H2; y++) kill[y * W2 + xx] = 1; }
+    const k = 255 / Math.max(1, mx - mn);
+    for (let i = 0; i < L.length; i++) { const v = kill[i] ? 255 : Math.max(0, Math.min(255, (L[i] - mn) * k)); d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; d[i * 4 + 3] = 255; }
+    g.putImageData(id, P, P); return c;
+  }
+  async function readDigits(w, c) {
+    await w.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '7' });
+    let { data } = await w.recognize(c); let t = (data.text || '').replace(/\D/g, ''), conf = data.confidence;
+    if (!t || t.length > 2) {
+      await w.setParameters({ tessedit_pageseg_mode: '8' });
+      const r2 = (await w.recognize(c)).data; const t2 = (r2.text || '').replace(/\D/g, '');
+      if (t2 && t2.length <= 2) { t = t2; conf = r2.confidence; }
+    }
+    return { t, conf };
+  }
+  async function readColumn(w, c) {
+    await w.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '6' });
+    const { data } = await w.recognize(c);
+    return words(data).filter(o => /^\d{1,3}$/.test(o.text));
+  }
+  async function resetParams(w) { await w.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: '6' }); }
+
+  function packFrom(text) {
+    const s = String(text || '').toUpperCase().replace(/\s+/g, '');
+    let m = s.match(/C\s*([0-9OU]{1,2})U?$/) || s.match(/^C?([0-9]{1,2})U?$/);
+    if (m) { const n = parseInt(fixDigits(m[1]), 10); if ([1, 2, 4, 6, 8, 12, 15, 20, 24, 30, 48].includes(n)) return n; }
+    if (/^C[OE0]U$|^CEU$|^COU$|^CAU$|^CGU$/.test(s)) return 6;
+    return null;
+  }
+  function packFromDesc(desc) {
+    const s = String(desc || '').toUpperCase();
+    const m = s.match(/X\s*(\d{1,2})\s*U\b/) || s.match(/\b(\d{1,2})\s*U\b/);
+    if (m) { const n = +m[1]; if (n > 0 && n <= 48) return n; }
+    return null;
+  }
+
+  async function read(src, opts = {}) {
+    const prog = opts.progress || (() => {});
+    const w = await getWorker(prog);
+    await resetParams(w);
+    const rot = await orient(src, w, prog, opts.rotation);
+    /* Si una lectura sale pobre, se repite a otro tamaño (el lector es sensible a la escala) */
+    let best = null;
+    const nat = Math.max(src.width, src.height), sizes = [...new Set([Math.min(2600, nat), 2200, 2600, 3200])].filter(x => x <= nat * 1.6);
+    for (const size of sizes) {
+      const r = await readAt(size);
+      if (!best || r.q > best.q) best = r;
+      if (r.lines.length && r.full === r.lines.length) break;
+      prog('Mejorando la lectura…');
+    }
+    await resetParams(w);
+    return best;
+  async function readAt(size) {
+    await resetParams(w);
+    const cv = rotCanvas(src, rot, size), W = cv.width;
+    prog('Leyendo la factura…');
+    const { data } = await w.recognize(cv);
+    const ws = words(data), full = data.text || '';
+    const blines = (data.lines || []).filter(l => l.baseline && (l.baseline.x1 - l.baseline.x0) > W * 0.25);
+    const skew = blines.length >= 2 ? median(blines.map(l => (l.baseline.y1 - l.baseline.y0) / Math.max(1, l.baseline.x1 - l.baseline.x0))) : null;
+    const dy = o => o.cy - (skew || 0) * o.cx;
+    const isLote = v => /^[|(\[]?\d{5}[|)\]]?$/.test(v.text);
+    const lead = t => { const m = String(t).match(/^[0-9OoIl|!SBZ]{5,8}/); return m ? fixDigits(m[0]) : ''; };
+    let codes = ws.filter(v => { const c = lead(v.text) || fixDigits(v.text); return c.length >= 5 && c.length <= 8 && v.left < 0.38 * W && (nonDigitCount(v.text) <= 1 || lead(v.text).length >= 5); });
+    codes.forEach(v => { const c = lead(v.text).length >= 5 ? lead(v.text) : fixDigits(v.text); v.code = c.length === 8 ? c.slice(0, 7) : c; v.code8 = c; });
+    let lotes = ws.filter(v => isLote(v) && v.left > 0.15 * W && v.left < 0.5 * W);
+    // columna de lote: el grupo más poblado
+    if (lotes.length) {
+      let lx = lotes[0].left, bn = -1;
+      for (const v of lotes) { const g = lotes.filter(u => Math.abs(u.left - v.left) < 0.03 * W), same = {}; g.forEach(u => same[u.text] = (same[u.text] || 0) + 1);
+        const n = g.length + 1.5 * Math.max(...Object.values(same)); if (n > bn) { bn = n; lx = v.left; } }
+      lotes = lotes.filter(v => Math.abs(v.left - lx) < 0.035 * W);
+    }
+    // emparejar código y lote por fila
+    // desfase vertical entre la columna de códigos y la de lotes (inclinación o perspectiva): el que más pares explica
+    const lft = codes.filter(c => !lotes.length || c.right < median(lotes.map(v => v.left)) - 0.08 * W);
+    const ldy = lotes.map(dy).sort((a, b) => a - b), lg = ldy.slice(1).map((y, i) => y - ldy[i]).filter(g => g > 3);
+    const pitchL = lg.length ? median(lg) : 24;
+    let bestO = 0, bestN = -1;
+    for (let o = -Math.round(pitchL * 0.6); o <= pitchL * 0.6; o += 1) { let n = 0; for (const v of lotes) if (lft.some(c => Math.abs(dy(v) - dy(c) - o) < pitchL * 0.25)) n++; if (n > bestN || (n === bestN && Math.abs(o) < Math.abs(bestO))) { bestN = n; bestO = o; } }
+    const cand = []; for (const v of lotes) for (const c of lft) { const r = Math.abs(dy(v) - dy(c) - bestO); if (r < pitchL * 0.45) cand.push({ v, c, r }); }
+    cand.sort((a, b) => a.r - b.r); const pm = new Map(), usedC = new Set();
+    for (const k of cand) { if (pm.has(k.v) || usedC.has(k.c)) continue; pm.set(k.v, k.c); usedC.add(k.c); }
+    const pairs = lotes.map(v => ({ lote: v, code: pm.get(v) || null }));
+    const good = pairs.filter(p => p.code);
+    let ccol = good.length ? median(good.map(p => p.code.left)) : (codes.length ? median(codes.map(c => c.left)) : null);
+    if (ccol != null) codes = codes.filter(c => Math.abs(c.left - ccol) < 0.05 * W);
+    let span = good.length ? median(good.map(p => p.lote.left - p.code.left)) : 0.225 * W;
+    const slope = good.length >= 2 ? median(good.map(p => (p.lote.cy - p.code.cy) / Math.max(1, p.lote.cx - p.code.cx))) : (skew || 0);
+    // códigos sin lote leído
+    for (const c of codes) if (!pairs.some(p => p.code === c)) pairs.push({ lote: null, code: c });
+    for (const p of pairs) if (p.code && ccol != null && Math.abs(p.code.left - ccol) > 0.05 * W) p.code = null;
+    // una fila con código y sin lote se descarta solo si queda aislada (p. ej. el RIF del encabezado)
+    { const ys = pairs.filter(p => p.code || p.lote).map(p => dy(p.lote || p.code)).sort((a, b) => a - b), gaps = ys.slice(1).map((y, i) => y - ys[i]).filter(g => g > 2);
+      const pit = gaps.length ? median(gaps) : 24;
+      for (const p of pairs) if (p.code && !p.lote) { const y = dy(p.code), nb = pairs.filter(q => q !== p && (q.code || q.lote)).map(q => Math.abs(dy(q.lote || q.code) - y)); if (!nb.length || Math.min(...nb) > pit * 2.5) p.code = null; } }
+    const rows = pairs.filter(p => p.code || p.lote).sort((a, b) => (a.lote || a.code).cy - (b.lote || b.code).cy);
+    // quitar duplicados muy cercanos
+    const hMed = median(rows.map(p => (p.lote || p.code).height)) || 20;
+    let uniq = [];
+    for (const p of rows) { const y = (p.lote || p.code).cy; if (!uniq.some(q => Math.abs((q.lote || q.code).cy - y) < hMed * 0.6)) uniq.push(p); }
+    // filas sin código solo si están dentro de la tabla (entre la primera y la última fila con código)
+    const cys = uniq.filter(p => p.code).map(p => p.code.cy);
+    if (cys.length) { const pit = cys.length > 1 ? (Math.max(...cys) - Math.min(...cys)) / (cys.length - 1) : hMed * 1.5, lo = Math.min(...cys) - pit * 0.7, hi = Math.max(...cys) + pit * 1.2;
+      uniq = uniq.filter(p => p.code || ((p.lote.cy >= lo) && (p.lote.cy <= hi))); }
+    const geo = uniq.map(p => {
+      const c = p.code, v = p.lote, loteLeft = v ? v.left : c.left + span;
+      const x0 = loteLeft - 0.275 * span, x1 = loteLeft - 0.15 * span, xm = (x0 + x1) / 2;
+      let cy;
+      if (v && c) cy = v.cy + (c.cy - v.cy) * ((v.cx - xm) / Math.max(1, v.cx - c.cx));
+      else if (v) cy = v.cy - slope * (v.cx - xm);
+      else cy = c.cy + slope * (xm - c.cx);
+      return { p, c, v, loteLeft, x0, x1, cy };
+    });
+    const h = hMed;
+    // 1) toda la columna de cantidades de una vez
+    const found = geo.map(() => null);
+    if (geo.length) {
+      const X0 = Math.min(...geo.map(g => g.x0)), X1 = Math.max(...geo.map(g => g.x1));
+      const Y0 = Math.min(...geo.map(g => g.cy)) - h * 1.2, Y1 = Math.max(...geo.map(g => g.cy)) + h * 1.2;
+      const col = cellCanvas(cv, X0, Y0, X1, Y1);
+      prog('Leyendo cantidades…');
+      const nums = await readColumn(w, col);
+      const pitch = geo.length > 1 ? median(geo.slice(1).map((g, k) => g.cy - geo[k].cy)) : h * 1.5;
+      for (const n of nums) {
+        const y = Y0 + (n.cy - 25) / 3, v = parseInt(n.text, 10);
+        if (!(v >= 1 && v <= 99) || n.height / 3 > h * 1.45) continue;
+        let bi = -1, bd = Infinity;
+        geo.forEach((g, k) => { const dd = Math.abs(g.cy - y); if (dd < bd) { bd = dd; bi = k; } });
+        if (bi >= 0 && bd < Math.max(h * 0.9, pitch * 0.55) && (!found[bi] || n.conf > found[bi].conf)) found[bi] = { t: n.text, conf: n.conf };
+      }
+    }
+    // 2) respaldo: celda por celda con un recorte más alto
+    const out = [];
+    for (let k = 0; k < geo.length; k++) {
+      const g = geo[k], c = g.c;
+      let dg = found[k];
+      if (!dg || dg.conf < 55) {
+        const r = await readDigits(w, cellCanvas(cv, g.x0, g.cy - h * 0.95, g.x1, g.cy + h * 0.95));
+        if (r.t && +r.t >= 1 && +r.t <= 99 && (!dg || r.conf > dg.conf)) dg = r;
+      }
+      const band = ws.filter(o => Math.abs(o.cy - (c ? c.cy + slope * (o.cx - c.cx) : g.cy + slope * (o.cx - (g.x0 + g.x1) / 2))) < h * 0.7);
+      const desc = band.filter(o => o.left > (c ? c.right : g.loteLeft - span * 0.85) && o.right < g.x0 + 4 && o !== c)
+        .map(o => o.text).join(' ').replace(/[@®©#~“”"'`‘’|{}\[\]]/g, ' ').replace(/^[^A-Za-z0-9]+/, '').replace(/\s+/g, ' ').trim();
+      const umTok = band.filter(o => o.cx > g.x1 - 0.02 * span && o.cx < g.loteLeft).map(o => o.text).join('');
+      out.push({
+        code: c ? c.code : '', codeRaw: c ? c.text : '', desc,
+        cant: dg && dg.t ? parseInt(dg.t, 10) : null, cantConf: dg ? dg.conf : 0,
+        pack: packFrom(umTok) || packFromDesc(desc), y: g.cy
+      });
+    }
+    // TOTAL PRODUCTOS (en la columna de cantidad)
+    let total = null;
+    const lab = ws.find(o => /PRODUCT/i.test(o.text));
+    if (lab && uniq.length) {
+      const ref = uniq[uniq.length - 1], v = ref.lote, c = ref.code;
+      const loteLeft = v ? v.left : c.left + span, x0 = loteLeft - 0.30 * span, x1 = loteLeft - 0.13 * span;
+      const yy = lab.cy + slope * (((x0 + x1) / 2) - lab.cx);
+      await w.setParameters({ tessedit_pageseg_mode: '7' });
+      const dg = await readDigits(w, cellCanvas(cv, x0, yy - lab.height * 0.9, x1, yy + lab.height * 0.9));
+      if (dg.t && dg.t.length <= 3) total = parseInt(dg.t, 10);
+    }
+    await resetParams(w);
+    const po = (full.match(/Orden\s*Compra\W{0,3}\s*(\d{7,9})/i) || [])[1] || '';
+    const num = (full.match(/Factura\s*N\S{0,3}\s*(\d{8,12})/i) || [])[1] || '';
+    const ctrl = (full.match(/\b(\d{2})\s?-\s?(\d{7})\b/) || []).slice(1).join('-');
+    const full2 = uniq.filter((p, k) => p.code && p.lote && out[k] && out[k].cant != null).length;
+    const q = full2 + 0.5 * out.filter(l => l.code && l.code.length >= 5 && l.cant != null).length - out.filter(l => !l.code).length * 0.5;
+    return { rotation: rot, lines: out, total, po, num, ctrl, canvas: cv, pepsi: /pepsi/i.test(full), q, full: full2 };
+  }
+  }
+  /* ======== Hoja de Oracle escaneada o en foto ======== */
+  const fixNum = t => String(t || '').replace(/[“”‘’'"*`´]/g, '1').replace(/[Oo]/g, '0').replace(/[lI|!]/g, '1').replace(/[S$]/g, '5').replace(/B/g, '8').replace(/Z/g, '2').replace(/[^0-9]/g, '');
+  function lumaSmall(src, maxSide) {
+    const c = rotCanvas(src, 0, maxSide), g = c.getContext('2d'), d = g.getImageData(0, 0, c.width, c.height).data, L = new Uint8Array(c.width * c.height);
+    for (let i = 0; i < L.length; i++) L[i] = (d[i * 4] * 299 + d[i * 4 + 1] * 587 + d[i * 4 + 2] * 114) / 1000;
+    return { L, W: c.width, H: c.height };
+  }
+  /* Orden de giros a probar: el texto horizontal alterna más entre filas que entre columnas */
+  function projOrder(src) {
+    const { L, W, H } = lumaSmall(src, 600); let s = 0; for (const v of L) s += v; const thr = s / L.length * 0.75;
+    const rows = new Float64Array(H), cols = new Float64Array(W);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (L[y * W + x] < thr) { rows[y]++; cols[x]++; }
+    const tr = a => { let m = 0; for (const v of a) m += v; m = m / a.length || 1; let t = 0; for (let i = 1; i < a.length; i++) t += Math.abs(a[i] - a[i - 1]); return t / (a.length * m); };
+    const r = tr(rows), c = tr(cols);
+    if (c > r * 1.15) return [90, 270, 0, 180];
+    if (r > c * 1.15) return [0, 180, 90, 270];
+    return [0, 90, 270, 180];
+  }
+  const DDRW = /Delivery|Report|Expected|Received|Damaged|Container|Printed|Signature|Description|Totals|Supplier/gi;
+  const FACW = /FACTURA|Orden|Compra|Descripci|Lote|Precio|Dscto|PRODUCTOS|Factura|Social/gi;
+  /* Clasifica una página: hoja de Oracle, factura u otra, y su giro */
+  async function classify(src, prog) {
+    const w = await getWorker(prog); await resetParams(w);
+    let best = null;
+    for (const r of projOrder(src)) {
+      const c = rotCanvas(src, r, 1300), { data } = await w.recognize(c), ws = words(data), txt = data.text || '';
+      const good = ws.filter(x => x.conf > 60 && /[A-Za-z]{3,}|\d{4,}/.test(x.text)).length;
+      const ddr = (txt.match(DDRW) || []).length, fac = (txt.match(FACW) || []).length, sc = good + 3 * (ddr + fac);
+      if (!best || sc > best.sc) best = { rot: r, sc, ddr, fac, txt, good };
+      if (good >= 20 && (ddr >= 3 || fac >= 3)) break;
+    }
+    const b = best, m = b.txt.match(/PO\s*Number\W{0,4}([0-9OoIl|“”‘’'*]{7,10})/i) || b.txt.match(/Orden\s*Compra\W{0,4}([0-9OoIl|]{7,10})/i);
+    const pepsi = /pepsi/i.test(b.txt);
+    return { rot: b.rot, type: b.ddr >= 3 && b.ddr >= b.fac ? 'ddr' : ((b.fac >= 3 || (b.fac >= 1 && pepsi) || /FACTURA/.test(b.txt)) ? 'fac' : 'otro'), po: m ? fixNum(m[1]) : '', pepsi };
+  }
+  function cropScaled(src, x0, y0, x1, y1, targetW) {
+    const w = x1 - x0, h = y1 - y0, s = targetW / w, c = document.createElement('canvas');
+    c.width = Math.round(w * s); c.height = Math.round(h * s);
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.imageSmoothingQuality = 'high';
+    g.drawImage(src, x0, y0, w, h, 0, 0, c.width, c.height); return c;
+  }
+  async function readDDR(src, opts = {}) {
+    const prog = opts.progress || (() => {}), w = await getWorker(prog); await resetParams(w);
+    const rot = opts.rotation != null ? opts.rotation : (await classify(src, prog)).rot;
+    const cv = rotCanvas(src, rot, 4400), two = cv.width > cv.height * 1.15;
+    const halves = two ? [[0, cv.width / 2], [cv.width / 2, cv.width]] : [[0, cv.width]];
+    const out = []; let hdr = opts.header || null;
+    for (let k = 0; k < halves.length; k++) {
+      const [a, b] = halves[k], pg = cropScaled(cv, a, 0, b, cv.height, 2000);
+      prog('Leyendo la hoja' + (two ? ' (' + (k + 1) + ' de 2)' : '') + '…');
+      await resetParams(w);
+      const { data } = await w.recognize(pg);
+      const res = await parseDDRPage(w, pg, words(data), hdr, prog);
+      if (res.hdr) hdr = res.hdr;
+      res.canvas = pg; out.push(res);
+    }
+    await resetParams(w);
+    return { rot, pages: out, header: hdr };
+  }
+  async function readCells(w, pg, x0, x1, ys, h, S) {
+    await w.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '6' });
+    const Y0 = Math.min(...ys) - h * 1.2, Y1 = Math.max(...ys) + h * 1.2;
+    const c = cellCanvas(pg, x0, Y0, x1, Y1, S);
+    const { data } = await w.recognize(c);
+    return words(data).filter(o => /^\d+$/.test(o.text)).map(o => ({ v: o.text, conf: o.conf, y: Y0 + (o.cy - 25) / S, h: o.height / S }));
+  }
+  async function parseDDRPage(w, pg, ws, prevHdr, prog) {
+    const W = pg.width, H = pg.height, find = re => ws.filter(o => re.test(o.text));
+    const byLn = {}; ws.forEach(o => { if (o.ln != null) (byLn[o.ln] = byLn[o.ln] || []).push(o); });
+    const sl = Object.values(byLn).filter(l => l.length >= 3).map(l => { l.sort((a, b) => a.cx - b.cx); const a = l[0], b = l[l.length - 1]; return (b.cx - a.cx) > W * 0.3 ? (b.cy - a.cy) / (b.cx - a.cx) : null; }).filter(x => x != null);
+    const skew = sl.length >= 2 ? median(sl) : 0, dyf = o => o.cy - skew * o.cx;
+    let hdr = null;
+    for (const e of find(/^Expect/i)) {
+      const r = ws.find(o => /^Receiv/i.test(o.text) && Math.abs(o.cy - e.cy) < e.height * 0.9 && o.cx > e.cx); if (!r) continue;
+      const line = ws.filter(o => Math.abs(o.cy - e.cy) < e.height * 0.9), g = re => line.find(o => re.test(o.text));
+      const it = g(/^It[eo]m$/i), ds = g(/^Desc/i), um = g(/^U[O0D]?[MNV]$/i), pk = g(/^Pack/i), sz = g(/^Size/i), dm = g(/^Damag/i), cw = r.cx - e.cx;
+      const cwl = r.left - e.left;
+      hdr = { y: e.cy, h: e.height, itemL: it ? it.left : W * 0.06, descL: ds ? ds.left : (it ? it.right + W * 0.05 : W * 0.2),
+        uom: um ? um.cx : null, pack: pk ? (pk.left + (sz || pk).right) / 2 : null, exp: e.cx, rec: r.cx, dmg: dm ? dm.cx : r.cx + cw,
+        uomL: um ? um.left : null, packL: pk ? pk.left : e.left - cwl, expL: e.left, recL: r.left, dmgL: dm ? dm.left : r.left + cwl };
+      if (!hdr.pack) hdr.pack = e.cx - cw; if (!hdr.uom) hdr.uom = hdr.pack - cw; if (hdr.uomL == null) hdr.uomL = hdr.packL - cwl;
+      break;
+    }
+    const own = !!hdr;
+    const isEA = o => /^[=SE5€][A4]$/i.test(o.text);
+    if (!hdr && prevHdr) {
+      hdr = { ...prevHdr, y: -1 };
+      const eas = ws.filter(o => isEA(o) && Math.abs(o.cx - prevHdr.uom) < W * 0.08);
+      if (eas.length >= 2) { const dx = median(eas.map(o => o.cx)) - prevHdr.uom; for (const k of ['itemL', 'descL', 'uom', 'pack', 'exp', 'rec', 'dmg', 'uomL', 'packL', 'expL', 'recL', 'dmgL']) hdr[k] += dx; }
+    }
+    const meta = ddrMeta(ws, W);
+    if (meta.po.length !== 8) { const num = ws.find(o => /^Number:?$/i.test(o.text)); if (num) { await w.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '7' }); const t = ((await w.recognize(grayCell(pg, num.right + 4, num.top - num.height * 0.5, num.right + W * 0.3, num.bottom + num.height * 0.5, 2))).data.text || '').replace(/\D/g, ''); if (t.length === 8 || (t.length >= 7 && meta.po.length < 7)) meta.po = t; await resetParams(w); } }
+    if (!hdr) return { rows: [], hdr: null, ...meta, totals: null };
+    const cw = hdr.rec - hdr.exp;
+    const tot = ws.find(o => /^Totals?$/i.test(o.text) && o.cx < hdr.exp);
+    const foot = ws.filter(o => /^Printed|^Driver|^Employee|^Signature/i.test(o.text) && o.cy > (hdr.y > 0 ? hdr.y : 0));
+    const yTop = hdr.y > 0 ? hdr.y + hdr.h * 0.8 : 0;
+    const yBot = Math.min(tot ? tot.top - 2 : H, foot.length ? Math.min(...foot.map(o => o.top)) : H);
+    const inRows = o => o.cy > yTop && o.cy < yBot;
+    // anclas de fila: código en la columna Item o "EA" en la columna UOM
+    const codeA = ws.filter(o => inRows(o) && o.left > hdr.itemL - 0.05 * W && o.right < hdr.descL + 0.03 * W && fixNum(o.text).length >= 6);
+    const eaA = ws.filter(o => inRows(o) && isEA(o) && Math.abs(o.cx - hdr.uom) < cw * 0.6);
+    const hMed = median([...codeA, ...eaA].map(o => o.height)) || hdr.h || 24;
+    const rows = [];
+    for (const o of [...codeA, ...eaA].sort((a, b) => dyf(a) - dyf(b))) if (!rows.some(p => Math.abs(p.dy - dyf(o)) < hMed * 0.8)) rows.push({ cy: o.cy, dy: dyf(o), code: codeA.includes(o) ? o : null });
+    for (const r of rows) { if (!r.code) r.code = codeA.find(o => Math.abs(dyf(o) - r.dy) < hMed * 0.8) || null; if (r.code) { r.dy = dyf(r.code); r.cy = r.code.cy; } }
+    if (!rows.length) return { rows: [], hdr: own ? hdr : prevHdr, ...meta, totals: null };
+    const ys = rows.map(r => r.cy), pitch = rows.length > 1 ? median(rows.slice(1).map((r, k) => r.cy - rows[k].cy)) : hMed * 3;
+    const near = (list, y, tol) => { let b = null, bd = tol; for (const n of list) { const d = Math.abs(n.y - y); if (d < bd) { bd = d; b = n; } } return b; };
+    // valores por columna: palabras del OCR general (una marca delante de una cifra es un 1 tenue)
+    const cwl = hdr.recL - hdr.expL;
+    const colX = { pack: [hdr.packL - cwl * 0.12, hdr.expL - cwl * 0.1], exp: [hdr.expL - cwl * 0.12, hdr.recL - cwl * 0.1], rec: [hdr.recL - cwl * 0.12, hdr.dmgL - cwl * 0.1], dmg: [hdr.dmgL - cwl * 0.12, hdr.dmgL + cwl * 0.8] };
+    const numTok = t => { t = String(t).trim(); if (/^[^0-9]\d/.test(t)) t = '1' + t.slice(1); t = t.replace(/[Oo]/g, '0').replace(/[lI|!]/g, '1'); return /^\d{1,4}$/.test(t) ? t : (/^\d{1,4}[^0-9]$/.test(t) ? t.slice(0, -1) : ''); };
+    const vals = {};
+    for (const k of ['pack', 'exp', 'rec', 'dmg']) {
+      vals[k] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i], [x0, x1] = colX[k];
+        const tk = ws.filter(o => Math.abs(dyf(o) - r.dy) < hMed * 0.65 && o.cx > x0 && o.cx < x1).sort((a, b) => a.left - b.left);
+        let v = tk.map(o => numTok(o.text)).join(''), conf = tk.length ? Math.min(...tk.map(o => o.conf)) : 0;
+        if (!v && k !== 'dmg') {
+          await w.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '7' });
+          const yc = r.dy + skew * (x0 + x1) / 2, rr = (await w.recognize(grayCell(pg, x0, yc - hMed * 0.8, x1, yc + hMed * 0.8, 2))).data;
+          v = (rr.text || '').replace(/\D/g, ''); conf = rr.confidence * 0.8;
+        }
+        vals[k].push(v ? { v, conf } : null);
+      }
+    }
+    await resetParams(w);
+    // columna Item: primera línea (8 dígitos) y segunda (1 dígito)
+    const itemCells = [];
+    const line2 = hMed * 1.25;
+    const out = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i], nextY = i + 1 < rows.length ? rows[i + 1].cy : r.cy + pitch;
+      const first = itemCells.filter(c => c.v.length >= 6 && Math.abs(c.y - r.cy) < hMed * 0.8).sort((a, b) => b.conf - a.conf)[0];
+      const second = itemCells.filter(c => c.v.length <= 2 && c.y > r.cy + hMed * 0.6 && c.y < Math.min(nextY - hMed * 0.4, r.cy + line2 + hMed * 0.8)).sort((a, b) => Math.abs(a.y - r.cy - line2) - Math.abs(b.y - r.cy - line2))[0];
+      let code = r.code ? fixNum(r.code.text) : '';
+      if (code.length < 8) {
+        await w.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '7' });
+        const rr = (await w.recognize(grayCell(pg, hdr.itemL - 0.012 * W, r.cy - hMed * 0.75, hdr.descL - 0.012 * W, r.cy + hMed * 0.75, 2))).data, t = (rr.text || '').replace(/\D/g, '');
+        if (t.length > code.length) code = t;
+        await resetParams(w);
+      }
+      if (code.length === 8 && second) code += second.v.slice(-1);
+      else if (code.length === 8) { const s2 = ws.find(o => /^\S$/.test(o.text) && o.left < hdr.descL && o.left > hdr.itemL - 0.05 * W && o.cy > r.cy + hMed * 0.6 && o.cy < r.cy + line2 + hMed * 0.8); if (s2 && fixNum(s2.text)) code += fixNum(s2.text); }
+      if (code.length === 9 && /^[17]{2}/.test(code)) code = '11' + code.slice(2);
+      const desc = ws.filter(o => o.cy > r.cy - hMed * 0.6 && o.cy < nextY - hMed * 0.6 && o.left >= hdr.descL - 0.015 * W && o.right < hdr.uom - cw * 0.35)
+        .sort((a, b) => (Math.abs(a.cy - b.cy) < hMed * 0.5 ? a.left - b.left : a.cy - b.cy)).map(o => o.text).join(' ').replace(/[|_“”‘’]/g, ' ').replace(/\s+/g, ' ').trim();
+      const v = k => vals[k][i] ? parseInt(vals[k][i].v, 10) : null, cf = k => vals[k][i] ? vals[k][i].conf : 0;
+      out.push({ item: code, desc, uom: 'EA', pack: v('pack'), exp: v('exp'), rec: v('rec'), dmg: v('dmg') == null ? 0 : v('dmg'),
+        conf: { item: r.code ? r.code.conf : 0, pack: cf('pack'), exp: cf('exp'), rec: cf('rec') }, y: r.cy });
+    }
+    // fila "Totals": se leen solo los dígitos y se quitan los dos decimales
+    let totals = null;
+    if (tot) {
+      await w.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '7' });
+      const rd = async x0 => { const tk = ws.filter(o => Math.abs(o.cy - tot.cy) < tot.height * 0.7 && o.left > x0 - cwl * 0.15 && o.left < x0 + cwl * 0.6); let t = tk.map(o => o.text).join('');
+        if (/^[^0-9]\d/.test(t)) t = '1' + t.slice(1); t = t.replace(/\D/g, '');
+        if (t.length < 3) t = ((await w.recognize(grayCell(pg, x0 - cwl * 0.15, tot.cy - tot.height * 0.9, x0 + cwl * 0.95, tot.cy + tot.height * 0.9, 2))).data.text || '').replace(/\D/g, '');
+        return t.length >= 3 ? parseInt(t.slice(0, -2), 10) : null; };
+      totals = { exp: await rd(hdr.expL), rec: await rd(hdr.recL) };
+    }
+    return { rows: out, hdr: own ? hdr : (prevHdr || hdr), ...meta, totals };
+  }
+  function ddrMeta(ws, W) {
+    const after = re => { const lab = ws.find(o => re.test(o.text)); if (!lab) return null; return ws.filter(o => Math.abs(o.cy - lab.cy) < lab.height * 0.7 && o.left > lab.right - 2 && o.left < lab.right + W * 0.6).sort((a, b) => a.left - b.left); };
+    const num = ws.find(o => /^Number:?$/i.test(o.text) && ws.some(p => /^PO$/i.test(p.text) && Math.abs(p.cy - o.cy) < o.height));
+    const poW = num ? ws.filter(o => Math.abs(o.cy - num.cy) < num.height * 0.7 && o.left > num.right && o.left < num.right + W * 0.5) : [];
+    const po = poW.map(o => fixNum(o.text)).find(t => t.length >= 7 && t.length <= 10) || '';
+    const sw = after(/^Supplier:?$/i), st = sw ? sw.map(o => o.text).join(' ') : '';
+    const sm = st.match(/^(\S+)\s*[-–=~]\s*(.+)$/);
+    const rw = ws.find(o => /^Receipt$/i.test(o.text)), dw = rw ? ws.filter(o => Math.abs(o.cy - rw.cy) < rw.height * 0.7 && o.left > rw.right && !/^Date/i.test(o.text)) : [];
+    const cIdx = ws.findIndex(o => /^Container$/i.test(o.text)), cw2 = cIdx >= 0 ? ws.filter(o => Math.abs(o.cy - ws[cIdx].cy) < ws[cIdx].height * 0.7 && o.left > ws[cIdx].right && !/^ID/i.test(o.text)) : [];
+    return { po, supCode: sm ? fixNum(sm[1]) : '', supName: (sm ? sm[2] : st).replace(/[^A-Za-z0-9 ,.\-]/g, '').trim(),
+      date: dw.map(o => o.text).join('').replace(/[^0-9\/]/g, '').replace(/^0\//, '10/'), cont: cw2.map(o => fixNum(o.text)).join('').slice(0, 7) };
+  }
+
+  function lev(a, b) {
+    const m = a.length, n = b.length, d = Array.from({ length: m + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= n; j++) d[0][j] = j;
+    for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[m][n];
+  }
+  const toks = s => String(s || '').toUpperCase().replace(/[ÑN]/g, 'N').replace(/[^A-Z0-9]+/g, ' ').trim().split(' ').filter(t => t.length > 1);
+  function descSim(a, b) {
+    const A = toks(a), B = toks(b); if (!A.length || !B.length) return 0;
+    let hit = 0; for (const t of A) if (B.some(u => u === t || (t.length >= 4 && (u.startsWith(t) || t.startsWith(u))) || (t.length >= 5 && lev(t, u) <= 1))) hit++;
+    return hit / Math.max(A.length, B.length);
+  }
+  /* Busca el código conocido más parecido al leído (y a su descripción) */
+  function matchCode(code, desc, cands) {
+    if (!cands.length) return null;
+    const exact = cands.find(c => c.code === code); if (exact) return { code: exact.code, how: 'exacto' };
+    let best = null;
+    for (const c of cands) {
+      let d = code ? lev(code, c.code) : 9;
+      if (code && code.length >= 4 && c.code.endsWith(code)) d = Math.min(d, 1);
+      if (code && code.length === c.code.length + 1 && code.startsWith(c.code)) d = Math.min(d, 0.5);
+      const ds = descSim(desc, c.desc);
+      const score = d - ds * 2.2;
+      if (!best || score < best.score) best = { code: c.code, d, ds, score };
+    }
+    if (best && (best.d <= 1 || (best.d <= 2 && best.ds >= 0.34) || best.ds >= 0.6)) return { code: best.code, how: 'corregido' };
+    return null;
+  }
+  return { read, getWorker, packFromDesc, matchCode, descSim, lev, classify, readDDR, fixNum };
+})();
+
+/* ======================= VERIFICAR FACTURAS ======================= */
+const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',PDFW='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',TESSJS='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+function loadScript(u){return new Promise((ok,ko)=>{const ex=document.querySelector('script[data-src="'+u+'"]');if(ex&&ex.dataset.ok)return ok();const s=document.createElement('script');s.src=u;s.dataset.src=u;s.onload=()=>{s.dataset.ok=1;ok()};s.onerror=()=>{s.remove();ko(new Error('Sin conexión: no pude descargar una parte de la app. Conéctate a internet una vez y vuelve a intentar.'))};document.head.appendChild(s)})}
+async function pdfLib(){if(!window.pdfjsLib){await loadScript(PDFJS);pdfjsLib.GlobalWorkerOptions.workerSrc=PDFW}return pdfjsLib}
+async function ocrLib(){if(!window.Tesseract)await loadScript(TESSJS)}
+
+/* Equivalencias código del proveedor -> ítem Farmatodo [ítem, unidades por caja, descripción del proveedor].
+   Armadas con las facturas y hojas de Pepsi del 08-10-2026. Las que empareje el usuario se guardan aparte. */
+const SEED_EQ={'1511':{
+'80624':['111017440',24,'PEPSI LATA 355X24U'],'80625':['111017434',24,'PEPSI LIG LAT355X24U'],'80626':['111011208',6,'PEPSI PET 2LX6U'],
+'80628':['111017479',6,'PEPSI LIGH PET 2LX6U'],'80646':['111017442',24,'GOLD KOLA LAT355X24U'],'80648':['111017646',24,'MANZANA LATA 355 ML'],
+'80674':['111013967',6,'7UP PET 2LX6U'],'80676':['111018959',24,'7UP LATA 355MLX24U'],'95722':['111020100',12,'MINALBA PET 1,5LX12U'],
+'95723':['111020099',2,'MINALBA PET 5LX2U'],'123517':['111022871',24,'MINALBA PET 600LX24U'],'178392':['111106757',6,'PEPSI PET 1,5LX6U'],
+'178395':['111106759',6,'7UP PET 1,5LX6U'],'178396':['111035131',6,'GOLD UVA PET 1,5LX6U'],'178397':['111928933',6,'GOLD MANZ PET1,5LX6U'],
+'178398':['111202996',6,'GOLD PIÑA PET1,5LX6U'],'178399':['111011326',12,'GATORAD MAND 500X12U'],'1011284':['111018446',24,'YUKY DURAZ LD250X24U'],
+'1012213':['111128701',12,'LIPTON DZNO 500X12U'],'1012523':['111131380',12,'YUK DURA CP B250X12U'],'1012942':['111969237',12,'YUK NARA CP B250X12U'],
+'1013371':['111423926',24,'MINALBA PET 355X24U'],'1015024':['111256777',12,'LIPTON VERDE 500X12U'],'1015384':['111929632',12,'GATORAD MORA 500X12U'],
+'1015712':['111944534',12,'YUK MANG PET 500X12U'],'1015931':['111929638',6,'YUK NARA PET1,5X6U'],'1016082':['111962319',6,'LIPTON VERDE 1,5X6U'],
+'1016083':['111959329',6,'LIPTON DZNO 1,5X6U'],'1016368':['115735509',24,'PEPSI ZERO LAT355 24U'],'1016692':['111971823',12,'MIN SPARK LIM500X12U'],
+'1017051':['112997351',6,'PEPSI PET 1LX6U'],'1017221':['113529390',6,'GOLD KOLA PET1LX6U'],'1017231':['113531385',6,'GOLD MANZ PET 2LX6U'],
+'1017371':['114364401',6,'7UP PET 1LX6U'],'1017751':['115247492',24,'MIN SPRK SODA LAT355X24U'],'1017985':['115735496',6,'PEPSI ZERO PET1L 6U'],
+'1018081':['115975537',6,'GOLD PIÑA PET2L 6U'],'1018111':['115943771',6,'PEPSI ZERO PET 2L 6U'],'1018131':['116073519',24,'ROCKSTAR LAT355 24U'],
+'1018182':['116298566',6,'YUK NARA S/A PET1,5X6U'],'1018183':['116338556',6,'YUK MZNA S/A PET1,5X6U']}};
+const PACKS=[1,2,3,4,6,8,10,12,15,16,18,20,24,30,36,48];
+function eqFor(sup){const o={},s=SEED_EQ[sup]||{},u=(db.eq&&db.eq[sup])||{};for(const k in s)o[k]={item:s[k][0],pack:s[k][1],desc:s[k][2]};for(const k in u)o[k]={item:u[k][0],pack:u[k][1],desc:u[k][2]};return o}
+function saveEq(sup,code,item,pack,desc){if(!code)return;db.eq=db.eq||{};(db.eq[sup]=db.eq[sup]||{})[code]=[item,pack||1,desc||''];persist()}
+const fmtN=n=>Number(n||0).toLocaleString('es-VE',{maximumFractionDigits:2});
+
+let ver=null,draft=null,draftDone=null;
+function busy(t){const b=$('#busy');if(t===false){b.classList.add('hide');return}b.classList.remove('hide');$('#busyT').textContent=t}
+function showOnly(id){['s1','s2','s3','s4','s5'].forEach(s=>$('#'+s).classList.toggle('hide',s!==id));scrollTo(0,0)}
+
+/* ---------- Pestañas de inicio ---------- */
+function setHomeSec(s){
+  $('#secRec').classList.toggle('hide',s!=='rec');$('#secFac').classList.toggle('hide',s!=='fac');
+  document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.sec===s));
+  $('#ttl').textContent=s==='fac'?'🧾 Verificar facturas':'📦 Recepción con escáner';
+  if(s==='fac')renderFacHome();
+  try{localStorage.setItem('recepcion-sec',s)}catch(e){}
+}
+$('#seg').onclick=e=>{const b=e.target.closest('button');if(b)setHomeSec(b.dataset.sec)};
+function renderFacHome(){
+  const L=db.fac||[];$('#vhist').classList.toggle('hide',!L.length);
+  $('#vl').innerHTML=L.map(v=>{const c=verCompare(v),bad=c.rows.filter(r=>r.st==='diff'||r.st==='norec').length+c.extra.length;
+    return '<div class="it hr"><div class="inf"><b>Orden '+esc(v.po)+' · '+esc(shortSup(v.supName))+'</b><small>'+esc(v.date)+' · '+v.facs.length+(v.facs.length===1?' factura':' facturas')+' · '+(v.facs.length?(bad?'<span class="tbad">'+bad+' diferencia'+(bad===1?'':'s')+'</span>':(c.inv===c.rec?'<span class="tok">todo coincide</span>':'faltan facturas')):'sin facturas')+'</small></div><button class="sm" data-vopen="'+v.id+'">Abrir</button><button class="sec sm" data-vdel="'+v.id+'" aria-label="Borrar">🗑</button></div>'}).join('');
+}
+const shortSup=s=>String(s||'').replace(/,?\s*C\.?\s*A\.?$/i,'').trim();
+$('#vl').onclick=e=>{const o=e.target.closest('[data-vopen]'),d=e.target.closest('[data-vdel]');
+  if(o)openVer(o.dataset.vopen);
+  if(d){const v=db.fac.find(x=>x.id===d.dataset.vdel);if(v&&confirm('¿Borrar la verificación de la orden '+v.po+'?')){db.fac=db.fac.filter(x=>x!==v);persist();renderFacHome()}}};
+
+/* ---------- Hoja de Oracle (PDF digital) ---------- */
+async function readDDR(file){
+  if(!/pdf$/i.test(file.type)&&!/\.pdf$/i.test(file.name))throw new Error('Elige el PDF de la hoja (Direct Delivery Report).');
+  const lib=await pdfLib(),pdf=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,toks=[];
+  for(let p=1;p<=pdf.numPages;p++){const pg=await pdf.getPage(p),vp=pg.getViewport({scale:1}),tc=await pg.getTextContent();
+    for(const it of tc.items){const s=it.str||'';if(!s.trim())continue;const x=it.transform[4],y=vp.height-it.transform[5],cw=(it.width||0)/Math.max(1,s.length);let cx=x;
+      for(const part of s.split(/(\s+)/)){if(part.trim())toks.push({s:part,x:cx,y,p});cx+=part.length*cw}}}
+  if(toks.length<15)throw new Error('Este PDF no tiene texto (parece un escaneo o una foto). Descarga la hoja directamente desde Oracle en PDF.');
+  toks.sort((a,b)=>a.p-b.p||a.y-b.y||a.x-b.x);
+  const lines=[];for(const t of toks){let L=lines[lines.length-1];if(!L||L.p!==t.p||Math.abs(L.y-t.y)>3){L={p:t.p,y:t.y,t:[]};lines.push(L)}L.t.push(t)}
+  lines.forEach(L=>L.t.sort((a,b)=>a.x-b.x));
+  const all=lines.map(L=>L.t.map(t=>t.s).join(' ')).join('\n');
+  const isNum=s=>/^\d{1,3}(\.\d{3})+(,\d+)?$|^\d+(,\d+)?$/.test(s);
+  const num=s=>parseFloat(String(s).replace(/\./g,'').replace(',','.'))||0;
+  const items=[];let cur=null,tot=null;
+  for(const L of lines){
+    const s=L.t.map(t=>t.s),line=s.join(' '),n=s.length;
+    if(/\bTotals?\b/i.test(line)){const ns=s.filter(isNum);if(ns.length>=2)tot={exp:num(ns[0]),rec:num(ns[1]),dmg:ns[2]?num(ns[2]):0};cur=null;continue}
+    if(/Printed:|Page Number|Direct Delivery Report|Signature|Receipt Date|Supplier:|Store:|Delivery\/ASN|PO Number|Status:|Invoice|Notes:|Container ID|^Item\b/i.test(line))continue;
+    if(/^\d{6,10}$/.test(s[0])&&n>=6&&isNum(s[n-1])&&isNum(s[n-2])&&isNum(s[n-3])&&isNum(s[n-4])&&/^[A-Za-z]{1,4}$/.test(s[n-5])){
+      cur={item:s[0],x:L.t[0].x,desc:s.slice(1,n-5).join(' '),uom:s[n-5],pack:num(s[n-4]),exp:num(s[n-3]),rec:num(s[n-2]),dmg:num(s[n-1])};items.push(cur);continue}
+    if(cur){let k=0;if(/^\d{1,2}$/.test(s[0])&&Math.abs(L.t[0].x-cur.x)<14){cur.item+=s[0];k=1}const rest=s.slice(k).join(' ').trim();if(rest)cur.desc+=' '+rest}
+  }
+  items.forEach(i=>{i.desc=i.desc.replace(/\s+/g,' ').trim();delete i.x});
+  if(!items.length)throw new Error('No encontré productos en ese PDF. ¿Es el Direct Delivery Report de Oracle?');
+  const sm=all.match(/Supplier\s*:?\s*(\d+)\s*-\s*([^\n]+)/i);
+  return{po:(all.match(/PO\s*Number\s*:?\s*(\d{5,})/i)||[])[1]||'',sup:sm?sm[1]:'',supName:sm?sm[2].trim():'',
+    date:(all.match(/Receipt\s*Date\s*:?\s*([\d\/.-]+)/i)||[])[1]||'',cont:(all.match(/Container\s*ID\s*:?\s*(\d+)/i)||[])[1]||'',
+    items,tot:tot||{exp:items.reduce((a,i)=>a+i.exp,0),rec:items.reduce((a,i)=>a+i.rec,0),dmg:0}};
+}
+
+/* ---------- Comparación ---------- */
+function lineItem(v,l,eq){const e=eq[l.code];return{item:l.item||(e&&e.item)||'',pack:l.pack||(e&&e.pack)||0}}
+/* ---------- Pantalla de la orden ---------- */
+function openVer(id){ver=db.fac.find(v=>v.id===id);if(!ver)return;showOnly('s3');renderVer();setTimeout(()=>{ocrLib().then(()=>FOCR.getWorker()).catch(()=>{})},800)}
+$('#vBack').onclick=()=>{ver=null;showOnly('s1');setHomeSec('fac')};
+let verShowOk=false;
+$('#vRes').onclick=e=>{if(e.target.id==='tOk'){verShowOk=!verShowOk;renderVer();return}
+  const b=e.target.closest('[data-xpair]');if(!b)return;const x=verCompare(ver).extra[+b.dataset.xpair];if(!x)return;
+  pickItem(x.l.desc||x.l.code,x.pack,it=>{x.l.item=it.item;if(!x.l.pack||x.l.pack===1)x.l.pack=it.pack;saveEq(ver.sup,x.l.code,it.item,x.l.pack,x.l.desc);persist();renderVer()})};
+$('#fl').onclick=e=>{const ed=e.target.closest('[data-fed]'),dl=e.target.closest('[data-fdel]');
+  if(ed){const f=ver.facs.find(x=>x.id===ed.dataset.fed);if(f)openReview({vid:ver.id,fid:f.id,num:f.num,ctrl:f.ctrl,po:f.po,total:f.total,lines:f.lines.map(l=>({...l,flags:{}})),thumb:null,src:null,rot:0})}
+  if(dl){const f=ver.facs.find(x=>x.id===dl.dataset.fdel);if(f&&confirm('¿Quitar la factura '+(f.num||'')+'?')){ver.facs=ver.facs.filter(x=>x!==f);persist();renderVer()}}};
+
+/* ---------- Agregar facturas ---------- */
+$('#bFacCam').onclick=()=>$('#ffcam').click();
+$('#bFacGal').onclick=()=>$('#ffgal').click();
+$('#bFacMan').onclick=()=>openReview({vid:ver.id,num:'',ctrl:'',po:ver.po,total:'',lines:[],thumb:null,src:null,rot:0,manual:true});
+$('#ffcam').onchange=$('#ffgal').onchange=e=>{const fs=[...e.target.files];e.target.value='';if(fs.length)addFacFiles(fs)};
+async function addFacFiles(files){
+  try{busy('Preparando…');await ocrLib()}catch(err){busy(false);alert(err.message);return}
+  const srcs=[];
+  for(const f of files){
+    if(/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name)){
+      try{busy('Abriendo PDF…');const lib=await pdfLib(),pdf=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
+        for(let p=1;p<=pdf.numPages;p++)srcs.push({pdf,p,name:f.name+' pág. '+p})}catch(err){busy(false);alert('No pude abrir '+f.name);return}
+    }else srcs.push({file:f,name:f.name});
+  }
+  let skipped=0,saved=0;
+  for(let k=0;k<srcs.length;k++){
+    const s=srcs[k],tag=srcs.length>1?' ('+(k+1)+' de '+srcs.length+')':'';
+    let src;
+    try{
+      busy('Abriendo imagen'+tag+'…');
+      if(s.pdf){const pg=await s.pdf.getPage(s.p),vp0=pg.getViewport({scale:1}),sc=2600/Math.max(vp0.width,vp0.height),vp=pg.getViewport({scale:sc});
+        src=document.createElement('canvas');src.width=vp.width;src.height=vp.height;const g=src.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,src.width,src.height);await pg.render({canvasContext:g,viewport:vp}).promise}
+      else src=await createImageBitmap(s.file);
+      const r=await FOCR.read(src,{progress:t=>busy(t+tag)});
+      if(!ver.sup&&r.pepsi)setSup(ver,'1511');
+      if(s.pdf&&(!r.lines.length||(r.po&&ver.po&&FOCR.lev(r.po,ver.po)>2))){skipped++;continue}
+      busy(false);
+      const res=await openReview(draftFrom(r,src));
+      if(res==='saved')saved++;
+      if(res==='stop')break;
+    }catch(err){busy(false);if(!confirm('No pude leer '+s.name+' ('+(err.message||err)+'). ¿Seguir con las demás?'))break}
+  }
+  busy(false);showOnly('s3');renderVer();
+  if(skipped)say2(skipped+(skipped===1?' página no era':' páginas no eran')+' factura de esta orden y se omitieron.');
+}
+function say2(t){const m=$('#vMsg');m.textContent=t;m.classList.remove('hide');clearTimeout(say2.t);say2.t=setTimeout(()=>m.classList.add('hide'),6000)}
+function draftFrom(r,src){
+  const eq=eqFor(ver.sup),cands=Object.entries(eq).map(([code,e])=>({code,desc:e.desc+' '+((ver.items.find(i=>i.item===e.item)||{}).desc||'')}));
+  const lines=r.lines.filter(l=>l.code||l.desc||l.cant).map(l=>{
+    const m=FOCR.matchCode(l.code,l.desc,cands),code=m?m.code:l.code,e=eq[code];
+    return{code,desc:(e&&e.desc)||l.desc,ocrDesc:l.desc,cant:l.cant,pack:(e&&e.pack)||l.pack||null,item:'',
+      flags:{code:m?(m.how==='exacto'?'':'corr'):'unk',cant:l.cant==null?'none':(l.cantConf<70?'low':''),raw:l.codeRaw}};
+  });
+  const po=r.po&&ver.po&&FOCR.lev(r.po,ver.po)<=2?ver.po:r.po;
+  const th=document.createElement('canvas'),sc=Math.min(1,1100/r.canvas.width);th.width=r.canvas.width*sc;th.height=r.canvas.height*sc;th.getContext('2d').drawImage(r.canvas,0,0,th.width,th.height);
+  const sum=lines.reduce((a,l)=>a+(l.cant||0),0),full=lines.every(l=>l.cant!=null);
+  return{vid:ver.id,num:r.num,ctrl:r.ctrl,po,total:(r.total!=null&&full&&r.total===sum)?r.total:'',lines,thumb:th.toDataURL('image/jpeg',.82),src,rot:r.rotation};
+}
+
+/* ---------- Revisión de una factura ---------- */
+function openReview(d){draft=d;showOnly('s4');renderReview();return new Promise(ok=>{draftDone=ok})}
+function prodOf(l){const eq=eqFor(ver.sup),e=eq[l.code],item=l.item||(e&&e.item),it=item&&ver.items.find(i=>i.item===item);return{item,it,e}}
+function renderReview(){
+  const d=draft;
+  $('#rvImg').innerHTML=d.thumb?'<img src="'+d.thumb+'" alt="Factura" id="rvPic">':'';
+  $('#rvRot').classList.toggle('hide',!d.src);
+  $('#rvNum').value=d.num||'';
+  $('#rvPoW').innerHTML=d.po&&d.po!==ver.po?'⚠ Esta factura dice orden '+esc(d.po)+' y la hoja es de la orden '+esc(ver.po)+'.':'';
+  $('#rvL').innerHTML=d.lines.map((l,k)=>{
+    const p=prodOf(l),warn=l.flags&&(l.flags.code||l.flags.cant)||!p.item||!l.pack||l.cant==null;
+    const opts=[...new Set([...PACKS,l.pack||0])].filter(Boolean).sort((a,b)=>a-b).map(n=>'<option value="'+n+'"'+(n===l.pack?' selected':'')+'>'+n+'</option>').join('');
+    return '<div class="ln'+(warn?' warn':'')+'" data-k="'+k+'">'+
+      '<div class="row lnh"><input type="text" class="lc" data-k="'+k+'" value="'+esc(l.code||'')+'" inputmode="numeric" placeholder="'+(l.item?'Código (opcional)':'Código')+'" aria-label="Código"><button class="sec sm" data-ldel="'+k+'" aria-label="Quitar línea">🗑</button></div>'+
+      '<div class="lp">'+(p.it?esc(p.it.desc):(p.item?'⚠ Ítem '+esc(p.item)+' (no está en la hoja)':'❓ Código desconocido · <button class="lnk" data-lpair="'+k+'">Emparejar</button>'))+'</div>'+
+      '<small class="mu">'+esc(l.ocrDesc||l.desc||'')+(l.flags&&l.flags.code==='corr'?' · código corregido (leído '+esc(l.flags.raw||'')+')':'')+'</small>'+
+      '<div class="row lnq"><button class="sec sm" data-lq="-1" data-k="'+k+'">−</button><input class="lqn'+(l.cant==null||(l.flags&&l.flags.cant)?' wq':'')+'" data-k="'+k+'" type="number" inputmode="numeric" min="0" value="'+(l.cant==null?'':l.cant)+'" placeholder="?" aria-label="Cajas"><button class="sec sm" data-lq="1" data-k="'+k+'">+</button><span class="mu">cajas ×</span><select class="lpk" data-k="'+k+'" aria-label="Unidades por caja"><option value="">?</option>'+opts+'</select><span class="lu">= '+(l.cant!=null&&l.pack?fmtN(l.cant*l.pack):'?')+' und</span></div></div>'}).join('')||'<p class="mu">Sin líneas. Toca “+ Agregar línea”.</p>';
+  updTotal();
+}
+function updTotal(){
+  const s=draft.lines.reduce((a,l)=>a+(+l.cant||0),0),t=$('#rvTot').value=String(draft.total==null?'':draft.total),st=$('#rvTotS');
+  const miss=draft.lines.filter(l=>l.cant==null).length;
+  $('#rvSum').textContent=s;
+  if(t==='')st.innerHTML='<span class="mu">Escribe el TOTAL PRODUCTOS de la factura para confirmar la lectura.</span>';
+  else if(+t===s&&!miss)st.innerHTML='<span class="tok">✔ Coincide con la factura</span>';
+  else st.innerHTML='<span class="tbad">✖ No coincide'+(miss?' · faltan '+miss+' cantidades':' (diferencia '+(s-t)+')')+'. Revisa las líneas en amarillo.</span>';
+}
+$('#rvTot').oninput=e=>{draft.total=e.target.value;const s=draft.lines.reduce((a,l)=>a+(+l.cant||0),0),st=$('#rvTotS'),t=e.target.value,miss=draft.lines.filter(l=>l.cant==null).length;
+  st.innerHTML=t===''?'<span class="mu">Escribe el TOTAL PRODUCTOS que dice la factura.</span>':(+t===s&&!miss?'<span class="tok">✔ Coincide con la factura</span>':'<span class="tbad">✖ No coincide'+(miss?' · faltan '+miss+' cantidades':' (diferencia '+(s-t)+')')+'. Revisa las líneas en amarillo.</span>')};
+$('#rvNum').oninput=e=>{draft.num=e.target.value.trim()};
+$('#rvL').addEventListener('input',e=>{
+  const t=e.target,k=+t.dataset.k,l=draft.lines[k];if(!l)return;
+  if(t.classList.contains('lqn')){l.cant=t.value===''?null:Math.max(0,parseInt(t.value,10)||0);if(l.flags)l.flags.cant='';const u=t.closest('.ln').querySelector('.lu');u.textContent='= '+(l.cant!=null&&l.pack?fmtN(l.cant*l.pack):'?')+' und';t.classList.remove('wq');rvSumOnly()}
+});
+$('#rvL').addEventListener('change',e=>{
+  const t=e.target,k=+t.dataset.k,l=draft.lines[k];if(!l)return;
+  if(t.classList.contains('lc')){l.code=t.value.replace(/\D/g,'');l.item='';const e2=eqFor(ver.sup)[l.code];if(e2){l.desc=e2.desc;if(!l.pack)l.pack=e2.pack}if(l.flags)l.flags.code=e2?'':'unk';renderReview()}
+  if(t.classList.contains('lpk')){l.pack=t.value?+t.value:null;renderReview()}
+});
+function rvSumOnly(){const s=draft.lines.reduce((a,l)=>a+(+l.cant||0),0);$('#rvSum').textContent=s;$('#rvTot').dispatchEvent(new Event('input'))}
+$('#rvL').addEventListener('click',e=>{
+  const q=e.target.closest('[data-lq]'),dl=e.target.closest('[data-ldel]'),pr=e.target.closest('[data-lpair]');
+  if(q){const l=draft.lines[+q.dataset.k];l.cant=Math.max(0,(l.cant||0)+(+q.dataset.lq));if(l.flags)l.flags.cant='';renderReview()}
+  if(dl){draft.lines.splice(+dl.dataset.ldel,1);renderReview()}
+  if(pr){const l=draft.lines[+pr.dataset.lpair];pickItem(l.ocrDesc||l.desc||l.code,l.pack,it=>{l.item=it.item;if(!l.pack)l.pack=it.pack;if(l.flags)l.flags.code='';renderReview()})}
+});
+$('#rvImg').onclick=e=>{if(e.target.id==='rvPic')e.target.classList.toggle('big')};
+$('#rvAddH').onclick=()=>pickItem('',0,it=>{const eq=eqFor(ver.sup),code=Object.keys(eq).find(c=>eq[c].item===it.item)||'';draft.lines.push({code,desc:code?eq[code].desc:it.desc,cant:null,pack:(code&&eq[code].pack)||it.pack,item:code?'':it.item,flags:{cant:'none'}});renderReview();const q=document.querySelectorAll('#rvL .lqn');q[q.length-1]&&q[q.length-1].focus()});
+$('#rvAdd').onclick=()=>{draft.lines.push({code:'',desc:'',cant:1,pack:null,item:'',flags:{code:'unk'}});renderReview();const ins=document.querySelectorAll('#rvL .lc');ins[ins.length-1]&&ins[ins.length-1].focus()};
+$('#rvRot').onclick=async()=>{
+  if(!draft.src)return;if(draft.lines.length&&!confirm('Volver a leer la foto girada. Se perderán los cambios de esta pantalla.'))return;
+  try{const rot=(draft.rot+90)%360,r=await FOCR.read(draft.src,{rotation:rot,progress:t=>busy(t)});busy(false);const nd=draftFrom(r,draft.src);nd.fid=draft.fid;draft=nd;renderReview()}catch(err){busy(false);alert('No pude leer la foto: '+(err.message||err))}
+};
+function closeReview(res){showOnly('s3');renderVer();const f=draftDone;draftDone=null;draft=null;f&&f(res)}
+$('#rvCancel').onclick=()=>closeReview('cancel');
+$('#rvSave').onclick=()=>{
+  const d=draft,bad=d.lines.filter(l=>(!l.code&&!l.item)||l.cant==null||!l.pack).length;
+  if(bad&&!confirm(bad+(bad===1?' línea está incompleta':' líneas están incompletas')+' (código, cajas o unidades por caja). ¿Guardar igual?'))return;
+  const s=d.lines.reduce((a,l)=>a+(+l.cant||0),0);
+  if(d.total!==''&&d.total!=null&&+d.total!==s&&!confirm('La suma ('+s+') no coincide con el total de la factura ('+d.total+'). ¿Guardar igual?'))return;
+  for(const l of d.lines)if(l.item&&l.code)saveEq(ver.sup,l.code,l.item,l.pack,l.desc||l.ocrDesc);
+  const f={id:d.fid||uid(),num:d.num||'',ctrl:d.ctrl||'',po:d.po||'',total:d.total===''?null:(d.total==null?null:+d.total),
+    lines:d.lines.map(l=>({code:l.code,desc:l.desc||l.ocrDesc||'',cant:l.cant,pack:l.pack,item:l.item||'',...(l.rej?{rej:l.rej}:{})}))};
+  const k=ver.facs.findIndex(x=>x.id===f.id);if(k>=0)ver.facs[k]=f;else ver.facs.push(f);
+  ver.upd=Date.now();persist();closeReview('saved');
+};
+
+/* ---------- Elegir producto de la hoja (emparejar) ---------- */
+let pickCb=null,pickHint='',pickPack=0;
+function pickItem(hint,pack,cb){pickCb=cb;pickHint=hint||'';pickPack=pack||0;$('#pkQ').value='';$('#pk').classList.remove('hide');renderPick();setTimeout(()=>$('#pkQ').focus(),50)}
+function renderPick(){
+  const q=fold($('#pkQ').value.trim()),used=new Set();
+  for(const f of ver.facs)for(const l of f.lines){const m=lineItem(ver,l,eqFor(ver.sup));if(m.item)used.add(m.item)}
+  const L=ver.items.map(i=>({i,s:FOCR.descSim(pickHint,i.desc)+(pickPack&&i.pack===pickPack?0.25:0)-(used.has(i.item)?0.3:0)}))
+    .filter(x=>!q||fold(x.i.desc+' '+x.i.item).includes(q)).sort((a,b)=>b.s-a.s);
+  $('#pkHint').textContent=pickHint?'Factura: '+pickHint:'';
+  $('#pkL').innerHTML=L.map(x=>'<div class="it hr" data-pk="'+esc(x.i.item)+'"><div class="inf"><b>'+esc(x.i.desc)+'</b><small>Ítem '+esc(x.i.item)+' · caja de '+x.i.pack+' · recibido '+fmtN(x.i.rec)+' und'+(used.has(x.i.item)?' · ya en facturas':'')+'</small></div></div>').join('');
+}
+$('#pkQ').oninput=renderPick;
+$('#pkX').onclick=()=>{$('#pk').classList.add('hide');pickCb=null};
+$('#pkL').onclick=e=>{const r=e.target.closest('[data-pk]');if(!r)return;const it=ver.items.find(i=>i.item===r.dataset.pk);$('#pk').classList.add('hide');const cb=pickCb;pickCb=null;if(it&&cb)cb(it)};
+
+/* ---------- Reporte ---------- */
+function verSummary(){
+  const v=ver,c=verCompare(v),L=[];
+  L.push('🧾 Verificación de facturas','📦 Orden '+v.po+' · '+shortSup(v.supName),'📅 Recibido '+v.date+(v.cont?' · Contenedor '+v.cont:''),
+    '🗂 Facturas: '+(v.facs.map(f=>f.num||f.ctrl||'s/n').join(', ')||'ninguna'),'Facturado: '+fmtN(c.inv)+' und ('+fmtN(c.cases)+' cajas) · Hoja: '+fmtN(c.rec)+' und recibidas');
+  const iss=c.rows.filter(r=>r.st==='diff'||r.st==='norec'),pend=c.rows.filter(r=>r.st==='noinv');
+  if(iss.length){L.push('','⚠ Diferencias ('+iss.length+'):');iss.forEach(r=>L.push('• '+r.i.desc+' (ítem '+r.i.item+') — factura '+fmtN(r.inv)+' und, hoja '+fmtN(r.i.rec)+' und'))}
+  if(c.extra.length){const eq=eqFor(v.sup);L.push('','❌ Facturado y no está en la hoja ('+c.extra.length+'):');c.extra.forEach(x=>L.push('• '+(x.l.desc||(eq[x.l.code]||{}).desc||'')+' (código '+x.l.code+', factura '+(x.f.num||'s/n')+') — '+(x.l.cant||0)+' cajas'))}
+  const chk=c.rows.filter(r=>r.st==='check');if(chk.length){L.push('','🔎 Por confirmar con el papel ('+chk.length+'):');chk.forEach(r=>L.push('• '+r.i.desc+' — factura '+fmtN(r.inv)+' und, la hoja se leyó '+(r.i.rec==null?'sin cantidad':fmtN(r.i.rec)+' und')))}
+  if(pend.length){L.push('','⏳ Recibido sin factura ('+pend.length+'):');pend.forEach(r=>L.push('• '+r.i.desc+' (ítem '+r.i.item+') — '+fmtN(r.i.rec)+' und'))}
+  if(!iss.length&&!c.extra.length&&!pend.length&&!chk.length&&v.facs.length)L.push('','✔ Todo coincide: las facturas cuadran con la hoja.');
+  return L.join('\n');
+}
+$('#vShare').onclick=async()=>{const t=verSummary();if(navigator.share){try{await navigator.share({title:'Orden '+ver.po,text:t});return}catch(e){if(e&&e.name==='AbortError')return}}window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank')};
+$('#vXls').onclick=()=>{
+  try{const v=ver,c=verCompare(v),wb=XLSX.utils.book_new();
+    const stT={ok:'Coincide',diff:'Diferencia',norec:'Facturado sin recibir',noinv:'Recibido sin factura',none:'Sin movimiento'};
+    const ws=XLSX.utils.aoa_to_sheet([['Ítem','Descripción','Unid. por caja','Esperado','Recibido (hoja)','Facturado','Diferencia','Estado','Códigos proveedor']].concat(c.rows.map(r=>[r.i.item,r.i.desc,r.i.pack,r.i.exp,r.i.rec,r.inv,r.inv-r.i.rec,stT[r.st],r.src.map(s=>s.l.code).join(', ')])).concat(c.extra.map(x=>[x.item||'',x.l.desc,x.pack,'','',x.u,x.u,'Facturado, no está en la hoja',x.l.code])));
+    ws['!cols']=[{wch:11},{wch:36},{wch:8},{wch:9},{wch:10},{wch:10},{wch:10},{wch:22},{wch:16}];XLSX.utils.book_append_sheet(wb,ws,'Comparación');
+    const rows=[['Factura','Código','Descripción','Cajas','Unid. por caja','Unidades','Ítem Farmatodo']];
+    for(const f of v.facs)for(const l of f.lines){const m=lineItem(v,l,c.eq);rows.push([f.num||f.ctrl||'',l.code,l.desc,l.cant,m.pack||'',(l.cant||0)*(m.pack||0),m.item])}
+    const ws2=XLSX.utils.aoa_to_sheet(rows);ws2['!cols']=[{wch:13},{wch:10},{wch:28},{wch:7},{wch:9},{wch:9},{wch:12}];XLSX.utils.book_append_sheet(wb,ws2,'Facturas');
+    XLSX.writeFile(wb,('Verificacion orden '+v.po+' '+new Date().toISOString().slice(0,10)).replace(/[\\/:*?"<>|]+/g,'-')+'.xlsx');
+  }catch(e){alert('No pude crear el Excel. Revisa tu conexión y recarga.')}
+};
+
+/* ---------- Productos conocidos de Farmatodo (para corregir códigos leídos de una hoja escaneada) ---------- */
+const SEED_FF={'1511':{
+'111017440':'PEPSI COLA LATA 355CC','111017434':'PEPSI LIGERA LATA 355CC','111011208':'REF PEPSI COLA 2LT','111017479':'REF PEPSI LIGERA 2LT',
+'111017442':'GOLDEN KOLITA LATA 355CC','111017646':'Refresco Golden Manzana Lata 355 ml','111013967':'REF 7UP 2LT','111018959':'7 UP REG LATA 355CC',
+'111020100':'AGUA MINALBA BOT PET 1,5 LT','111020099':'AGUA MINALBA BOT PET 5LT','111022871':'AGUA MINALBA T/ROSCA 600ML','111106757':'REF PEPSI PET 1.5LT',
+'111106759':'7 UP 1.5 LT','111035131':'GOLDEN UVA 1.5 LTS','111928933':'Golden Manzana 1.5 Lt','111202996':'GOLDEN PINA 1.5 LTS','111011326':'BD GATORADE MANDARIN',
+'111018446':'Jugo Yuky-Pak Durazno 250Ml','111128701':'LIPTON ICE TEA DURAZ PET 500ML','111131380':'JUG YUKERY DURAZNO BOT 250ML','111969237':'JUG YUKERY NARANJA BOT 250ML',
+'111423926':'AGUA MINALBA PET 355ML','111256777':'TE LIPTON TEA VERDE LIMON PET 500ML','111929632':'BD GATORADE MORA 500ML','111944534':'YUKERY MANGO PET 500ML',
+'111929638':'JUG YUKERY NARANJA 1.5 L','111962319':'TE LIPTON VERDE LIMON PET 1.5Lt','111959329':'TE LIPTON DURAZNO PET 1.5L','115735509':'Refresco Pepsi Cola Zero Azucar Lata 355 Ml',
+'111971823':'AGUA MINALBA SPARKLING LIMON C/G 500ML','112997351':'Refresco Pepsi Cola Pet 1Lt','113529390':'Refresco Golden Kolita 1Lt','113531385':'Refresco Golden Manzana 2Lt',
+'114364401':'Refresco 7 UP Pet 1Lt','115247492':'Soda Minalba Sparkling 355ML','115735496':'Refresco Pepsi Cola Zero Azucar 1 Lt','115975537':'Refresco Golden Pina 2 Lt',
+'115943771':'Refresco Pepsi Cola Zero Azucar 2 Lt','116073519':'Bebida Energetica Rockstar Lata 355ml','116298566':'Jugo Yukery Naranja Sin Azucar 1.5LT',
+'116338556':'Jugo Yukery Manzana Sin Azucar 1.5LT'}};
+const SEED_ITEMS_EXTRA={'1511':{'111967348':[12,'AGUA MINALBA SPARKLING C/G 500ML']}};
+const SUP_BY_NAME=[[/PEPS/i,'1511',"PEPSI-COLA VENEZUELA, C.A."]],SUP_NAMES={'1511':'PEPSI-COLA VENEZUELA, C.A.'};
+function knownItems(sup){
+  const o={},ff=SEED_FF[sup]||{};
+  for(const e of Object.values(eqFor(sup)))o[e.item]={pack:e.pack,desc:ff[e.item]||e.desc};
+  const x=SEED_ITEMS_EXTRA[sup]||{};for(const k in x)o[k]={pack:x[k][0],desc:x[k][1]};
+  const u=(db.items&&db.items[sup])||{};for(const k in u)o[k]={pack:u[k][0],desc:u[k][1]};
+  return o;
+}
+function learnItems(sup,items){if(!sup)return;db.items=db.items||{};const m=db.items[sup]=db.items[sup]||{};for(const i of items)if(/^\d{9}$/.test(i.item)&&i.pack)m[i.item]=[i.pack,i.desc||''];}
+/* Distancia entre un código leído y uno conocido: un "1" perdido o un 7 por 1 cuesta poco */
+function codeDist(a,b){
+  a=String(a||'');b=String(b||'');const m=a.length,n=b.length,d=[];
+  const ins=c=>c==='1'?0.4:1,sub=(x,y)=>x===y?0:((x==='7'&&y==='1')||(x==='1'&&y==='7')?0.4:(/^(89|98|38|83|56|65|08|80|14|41)$/.test(x+y)?0.7:1));
+  for(let i=0;i<=m;i++){d[i]=[i]}for(let j=1;j<=n;j++)d[0][j]=d[0][j-1]+ins(b[j-1]);
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+ins(b[j-1]),d[i-1][j-1]+sub(a[i-1],b[j-1]));
+  return d[m][n];
+}
+/* Corrige filas leídas de una hoja escaneada y marca las dudosas */
+function fixDDR(rows,sup,totals){
+  const K=knownItems(sup),keys=Object.keys(K);
+  const cand=rows.map((r,i)=>{if(K[r.item])return{i,k:r.item,sc:-9};let best=null;
+    for(const k of keys){const d=codeDist(r.item,k),s=FOCR.descSim(r.desc,K[k].desc),sc=d-2*s;if((d<=1.6||(d<=3.2&&s>=0.3)||(s>=0.6&&d<=5))&&(!best||sc<best.sc))best={i,k,sc}}return best});
+  const asg={},used=new Set();for(const c of cand.filter(Boolean).sort((a,b)=>a.sc-b.sc)){if(used.has(c.k)||asg[c.i]!=null)continue;asg[c.i]=c.k;used.add(c.k)}
+  const out=rows.map((r,i)=>{
+    const fl={item:'ok',v:'ok'};let item=r.item||'',pack=r.pack;
+    if(asg[i]!=null){if(asg[i]!==item){item=asg[i];fl.item='corr'}pack=K[item].pack||pack}
+    else fl.item=(item.length===9&&/^11/.test(item))?'new':'unk';
+    if(!PACKS.includes(pack))fl.v='unc';
+    let exp=r.exp,rec=r.rec;const valid=v=>v!=null&&pack>0&&v%pack===0,fix1=v=>(v!=null&&pack>0&&v%pack!==0&&(+('1'+v))%pack===0)?+('1'+v):v;
+    let fixed=false;
+    const packKnown=asg[i]!=null;
+    if(pack){const e2=fix1(exp),r2=fix1(rec);if(e2!==exp||r2!==rec){fixed=true;if(fl.v==='ok')fl.v=packKnown?'corr':'unc'}exp=e2;rec=r2}
+    if(!valid(exp)&&valid(rec)){exp=rec;if(fl.v==='ok')fl.v='corr'}
+    if(!valid(rec)){fl.v='unc';if(rec==null&&valid(exp))rec=exp}
+    else if(exp!=null&&exp!==rec)fl.v='unc';
+    return{item,desc:(K[item]&&K[item].desc)||r.desc||'',uom:r.uom||'EA',pack:pack||null,exp,rec,dmg:r.dmg||0,fl};
+  });
+  // si el total impreso coincide con la suma leída, las cantidades son confiables
+  if(totals&&totals.rec!=null&&out.reduce((a,x)=>a+(x.rec||0),0)===totals.rec)out.forEach(x=>{if(x.fl.v==='unc'&&x.pack)x.fl.v='corr'});
+  return out;
+}
+function setSup(v,sup){if(!sup||v.sup===sup)return;v.sup=sup;v.supName=SUP_NAMES[sup]||v.supName;if(v.scan)v.items=fixDDR(v.items,sup,v.totRead);persist()}
+function supFrom(code,name){
+  if(code&&(SEED_EQ[code]||(db.eq&&db.eq[code])))return code;
+  for(const [re,c] of SUP_BY_NAME)if(re.test(name||''))return c;
+  return code||'';
+}
+
+/* ---------- Importar hoja: PDF de Oracle, PDF escaneado (puede ser el reporte diario) o fotos ---------- */
+$('#fddr').onchange=e=>{const fs=[...e.target.files];e.target.value='';if(fs.length)importDocs(fs)};
+const isPdf=f=>/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name);
+function scaleCanvas(src,max){const s=Math.min(1,max/Math.max(src.width,src.height)),c=document.createElement('canvas');c.width=Math.round(src.width*s);c.height=Math.round(src.height*s);c.getContext('2d').drawImage(src,0,0,c.width,c.height);return c}
+function thumbOf(cv){return scaleCanvas(cv,900).toDataURL('image/jpeg',.8)}
+async function expandPages(files){
+  const out=[];
+  for(const f of files){
+    if(isPdf(f)){const lib=await pdfLib(),pdf=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
+      for(let p=1;p<=pdf.numPages;p++)out.push({name:(files.length>1?f.name+' ':'')+'pág. '+p,get:async max=>{const pg=await pdf.getPage(p),v0=pg.getViewport({scale:1}),vp=pg.getViewport({scale:max/Math.max(v0.width,v0.height)}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);await pg.render({canvasContext:g,viewport:vp}).promise;return c}})}
+    else out.push({name:f.name,get:async max=>{const bm=await createImageBitmap(f);if(max>=Math.max(bm.width,bm.height))return bm;const c=scaleCanvas(bm,max);bm.close&&bm.close();return c}});
+  }
+  return out;
+}
+async function importDocs(files){
+  window.__importing=true;try{await importDocsRun(files)}finally{window.__importing=false}
+}
+async function importDocsRun(files){
+  if(files.length===1&&isPdf(files[0])){
+    busy('Abriendo PDF…');
+    try{const d=await readDDR(files[0]);busy(false);const v=await saveVerDoc(d);if(v)openVer(v.id);return}
+    catch(err){if(!/no tiene texto/i.test(err.message||'')){busy(false);alert(err.message||'No pude leer ese PDF.');return}}
+  }
+  try{busy('Preparando el lector…');await ocrLib();await FOCR.getWorker(t=>busy(t))}catch(err){busy(false);alert(err.message);return}
+  let pages;try{pages=await expandPages(files)}catch(err){busy(false);alert('No pude abrir el archivo.');return}
+  const info=[];
+  for(let k=0;k<pages.length;k++){busy('Revisando página '+(k+1)+' de '+pages.length+'…');try{const src=await pages[k].get(1600);info.push({k,...(await FOCR.classify(src,()=>{}))})}catch(e){info.push({k,type:'otro'})}}
+  const ddrPages=info.filter(x=>x.type==='ddr');
+  if(!ddrPages.length){busy(false);alert(files.length===1&&!isPdf(files[0])?'No encontré una hoja de Oracle en esa foto. Tómala de frente, completa y con buena luz.':'No encontré hojas de Oracle (Direct Delivery Report) en el archivo.');return}
+  const docs=[];let hdr=null,cur=null;
+  for(const p of ddrPages){
+    const src=await pages[p.k].get(2600);
+    const r=await FOCR.readDDR(src,{rotation:p.rot,header:hdr,progress:t=>busy(t+' · '+pages[p.k].name)});hdr=r.header||hdr;
+    for(const h of r.pages){if(!h.rows.length)continue;
+      if((h.po&&h.po.length>=7)||!cur||cur.closed){cur={po:h.po||'',supCode:h.supCode,supName:h.supName,date:h.date,cont:h.cont,rows:[],totals:null,thumbs:[]};docs.push(cur)}
+      cur.rows.push(...h.rows);cur.thumbs.push(thumbOf(h.canvas));if(h.totals){cur.totals=h.totals;cur.closed=true}}
+  }
+  const vers=[];
+  for(const d of docs){
+    const sup=supFrom(d.supCode,d.supName),items=fixDDR(d.rows,sup,d.totals);
+    const nm=SUP_NAMES[sup]||d.supName||'';
+    const v=await saveVerDoc({po:d.po,sup,supName:nm,date:d.date,cont:d.cont,items,scan:true,totRead:d.totals||null,
+      tot:{exp:items.reduce((a,i)=>a+(i.exp||0),0),rec:items.reduce((a,i)=>a+(i.rec||0),0),dmg:0}});
+    if(v){v._thumbs=d.thumbs;vers.push(v)}
+  }
+  // facturas de Pepsi en el mismo archivo: se asignan a su orden
+  const facPages=info.filter(x=>x.type==='fac'&&x.pepsi);let added=0,skipped=0;
+  if(vers.length&&facPages.length){
+    for(let n=0;n<facPages.length;n++){const p=facPages[n],tag=' ('+(n+1)+' de '+facPages.length+')';
+      try{
+        const src=await pages[p.k].get(2600);busy('Leyendo factura'+tag+'…');
+        const r=await FOCR.read(src,{rotation:p.rot,progress:t=>busy(t+tag)});
+        let v=vers.find(x=>x.po&&r.po&&FOCR.lev(x.po,r.po)<=2)||(r.po?vers.find(x=>x.po&&FOCR.lev(x.po,r.po)<=3):null);
+        if(!v&&vers.length===1&&(!r.po||!vers[0].po))v=vers[0];
+        if(v&&r.po)(v._pos=v._pos||[]).push(r.po);
+        if(v&&!v.sup&&(p.pepsi||r.pepsi))setSup(v,'1511');
+        if(!v||!r.lines.length){skipped++;continue}
+        ver=v;busy(false);const res=await openReview(draftFrom(r,src));if(res==='saved')added++;if(res==='stop')break;
+      }catch(e){skipped++;console.error('factura omitida',e)}
+    }
+  }
+  // número de orden: el que más se repite entre las facturas, si el de la hoja no se leyó bien
+  for(const v of vers){const ps=(v._pos||[]).filter(x=>x.length===8);if(!ps.length)continue;const cnt={};ps.forEach(x=>cnt[x]=(cnt[x]||0)+1);const top=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];
+    if((!v.po||v.po.length!==8||(cnt[top]>=2&&!cnt[v.po]))&&!db.fac.some(x=>x!==v&&x.po===top))v.po=top;delete v._pos;persist()}
+  busy(false);
+  if(vers.length===1){openVer(vers[0].id)}else{showOnly('s1');setHomeSec('fac')}
+  const msg=vers.length+(vers.length===1?' orden leída':' órdenes leídas')+(added?' · '+added+(added===1?' factura agregada':' facturas agregadas'):'')+(skipped?' · '+skipped+' páginas omitidas':'');
+  if(vers.length===1)say2(msg);else alert(msg+'. Ábrelas en la lista para revisarlas.');
+}
+async function saveVerDoc(d){
+  let v=d.po?db.fac.find(x=>x.po&&FOCR.lev(x.po,d.po)<=(d.scan?1:0)):null;
+  if(v){if(!confirm('Ya tienes la orden '+v.po+'. ¿Reemplazar su hoja y conservar las facturas cargadas?'))return null;const keep=v.facs;Object.assign(v,d,{facs:keep,po:v.po,upd:Date.now()})}
+  else{v={id:uid(),...d,facs:[],created:Date.now()};db.fac.unshift(v);if(db.fac.length>MAXREC)db.fac.length=MAXREC}
+  if(!d.scan)learnItems(v.sup,v.items);
+  persist();return v;
+}
+
+/* ---------- Comparación (la factura manda) ---------- */
+function verCompare(v){
+  const eq=eqFor(v.sup),K=knownItems(v.sup),rows=v.items.map(i=>({i,inv:0,cases:0,src:[],approx:false})),extra=[],byItem={};
+  rows.forEach(r=>{if(!byItem[r.i.item])byItem[r.i.item]=r});
+  for(const f of v.facs)for(const l of f.lines){
+    const m=lineItem(v,l,eq),pack=m.pack||1,u=(l.cant||0)*pack;
+    let r=m.item&&byItem[m.item];
+    if(!r&&m.item&&v.scan){// la hoja escaneada pudo leer mal el código: buscar por parecido
+      const kd=(K[m.item]||{}).desc||l.desc||'';let best=null;
+      const facItems=new Set();for(const ff of v.facs)for(const ll of ff.lines){const mm=lineItem(v,ll,eq);if(mm.item)facItems.add(mm.item)}
+      for(const x of rows){if(x.src.length||byItem[m.item]===x||(l.rej&&l.rej.includes(x.i.item)))continue;if(K[x.i.item]&&(facItems.has(x.i.item)||(x.i.fl&&x.i.fl.item!=='unk')))continue;
+        const d=codeDist(x.i.item,m.item),s=FOCR.descSim(kd,x.i.desc),sc=d-2*s-(x.i.pack===pack?0.5:0);if((d<=2.6||s>=0.45)&&(!best||sc<best.sc))best={x,sc}}
+      if(best){r=best.x;r.approx=true}
+    }
+    if(r){r.inv+=u;r.cases+=(l.cant||0);r.src.push({f,l,pack,item:m.item})}
+    else extra.push({f,l,pack,u,item:m.item});
+  }
+  for(const r of rows){const rec=r.i.rec,fv=r.i.fl&&r.i.fl.v,unc=fv==='unc'||(fv==='corr'&&rec!==r.inv)||(v.scan&&r.i.fl&&r.i.fl.item==='unk');
+    if(r.inv===0)r.st=(rec||0)===0?'none':'noinv';
+    else if(rec==null||r.approx||unc)r.st='check';
+    else r.st=rec===r.inv?'ok':(rec===0?'norec':'diff');}
+  return{rows,extra,eq,inv:rows.reduce((a,r)=>a+r.inv,0)+extra.reduce((a,x)=>a+x.u,0),rec:v.items.reduce((a,i)=>a+(i.rec||0),0),cases:v.facs.reduce((a,f)=>a+f.lines.reduce((b,l)=>b+(l.cant||0),0),0)};
+}
+function renderVer(){
+  const v=ver,c=verCompare(v),dud=v.scan?v.items.filter(i=>i.fl&&(i.fl.v==='unc'||i.fl.item==='unk')).length:0;
+  $('#vHead').innerHTML='<b>Orden '+esc(v.po||'?')+'</b> · '+esc(shortSup(v.supName))+'<br><span class="mu">'+(v.date?'Recibido '+esc(v.date)+' · ':'')+(v.cont?'Contenedor '+esc(v.cont)+' · ':'')+v.items.length+' productos · '+fmtN(c.rec)+' und recibidas'+(v.scan?' · hoja escaneada':'')+'</span>'+
+    (v.scan&&v.totRead&&v.totRead.rec!=null?'<br><span class="mu">Total impreso en la hoja: '+fmtN(v.totRead.rec)+' und '+(v.totRead.rec===c.rec?'<span class="tok">✔ cuadra con lo leído</span>':'<span class="tbad">· lo leído suma '+fmtN(c.rec)+'</span>')+'</span>':'')+
+    '<div class="row" style="margin-top:8px"><button id="vHoja" class="sec sm">📄 Ver y corregir la hoja'+(dud?' ('+dud+' con dudas)':'')+'</button></div>';
+  $('#fl').innerHTML=v.facs.length?v.facs.map(f=>{const s=f.lines.reduce((a,l)=>a+(l.cant||0),0),okT=f.total!=null&&+f.total===s;
+    return '<div class="it hr"><div class="inf"><b>Factura '+esc(f.num||f.ctrl||'s/n')+'</b><small>'+f.lines.length+' líneas · '+s+' cajas'+(f.total!=null&&f.total!==''?(okT?' · <span class="tok">✔ total coincide</span>':' · <span class="tbad">total impreso '+esc(f.total)+'</span>'):'')+(f.po&&v.po&&f.po!==v.po?' · <span class="tbad">orden '+esc(f.po)+'</span>':'')+'</small></div><button class="sec sm" data-fed="'+f.id+'">Editar</button><button class="sec sm" data-fdel="'+f.id+'" aria-label="Borrar">🗑</button></div>'}).join(''):'<p class="mu">Aún no hay facturas. Agrégalas con foto, desde la galería o un PDF escaneado.</p>';
+  const iss=c.rows.filter(r=>r.st==='diff'||r.st==='norec'),chk=c.rows.filter(r=>r.st==='check'),pend=c.rows.filter(r=>r.st==='noinv'),ok=c.rows.filter(r=>r.st==='ok');
+  const nIss=iss.length+c.extra.length;
+  $('#vSum').innerHTML='<div class="chips"><span class="chip ok">✔ '+ok.length+' coinciden</span><span class="chip '+(nIss?'bad':'')+'">⚠ '+nIss+' diferencias</span>'+(chk.length?'<span class="chip bad">🔎 '+chk.length+' por confirmar</span>':'')+'<span class="chip">⏳ '+pend.length+' sin factura</span></div>'+
+    '<p class="mu" style="margin:6px 0 0">Facturado: <b>'+fmtN(c.inv)+' und</b> ('+fmtN(c.cases)+' cajas) · Hoja: <b>'+fmtN(c.rec)+' und</b> recibidas'+(c.inv===c.rec&&v.facs.length&&!nIss&&!chk.length?' · <span class="tok">✔ cuadra</span>':'')+'</p>';
+  const codes=r=>r.src.map(s=>s.l.code).filter((x,k,a)=>x&&a.indexOf(x)===k).join(', ');
+  const row=(r,cls,txt,btn)=>'<div class="it '+cls+'"><div class="inf"><b>'+esc(r.i.desc||'(sin descripción)')+'</b><small>Ítem '+esc(r.i.item||'?')+' · caja de '+(r.i.pack||'?')+(codes(r)?' · '+esc(codes(r)):'')+'</small><small>'+txt+'</small>'+(btn||'')+'</div></div>';
+  let h='';
+  chk.forEach(r=>{const k=c.rows.indexOf(r);h+=row(r,'over','🔎 Factura '+fmtN(r.inv)+' und ('+fmtN(r.cases)+' cajas) · la hoja se leyó '+(r.i.rec==null?'sin cantidad':fmtN(r.i.rec)+' und')+(r.approx?' en un código parecido ('+esc(r.i.item)+')':'')+'. Míralo en el papel:',
+    '<div class="row" style="margin-top:6px;gap:6px;flex-wrap:wrap"><button class="sm" data-cok="'+k+'">✔ La hoja dice '+fmtN(r.inv)+'</button><button class="sec sm" data-cfix="'+k+'">✏ Dice otra cantidad</button>'+(r.approx?'<button class="sec sm" data-crej="'+k+'">✖ No es este producto</button>':'')+'</div>')});
+  const eqv=eqFor(v.sup),Kv=knownItems(v.sup);
+  c.extra.forEach((x,k)=>{h+='<div class="it over"><div class="inf"><b>'+esc((Kv[x.item]||{}).desc||x.l.desc||(eqv[x.l.code]||{}).desc||('Código '+x.l.code))+'</b><small>Factura '+esc(x.f.num||'s/n')+' · código '+esc(x.l.code||'?')+' · '+(x.l.cant||0)+' cajas'+(x.pack>1?' × '+x.pack+' = '+fmtN(x.u)+' und':'')+'</small><small>'+(x.item?'❌ Facturado, el ítem '+esc(x.item)+' no está en la hoja':'❓ Código sin emparejar')+'</small>'+(x.item&&v.scan?'<div class="row" style="margin-top:6px;gap:6px"><button class="sm" data-xadd="'+k+'">＋ Sí está en la hoja</button><button class="sec sm" data-xpair="'+k+'">Emparejar</button></div>':'')+'</div>'+(x.item&&v.scan?'':'<button class="sm" data-xpair="'+k+'">Emparejar</button>')+'</div>'});
+  iss.forEach(r=>{h+=row(r,'over',r.st==='norec'?'❌ Facturado '+fmtN(r.inv)+' und, la hoja dice 0 recibido':'⚠ Factura '+fmtN(r.inv)+' und ('+fmtN(r.cases)+' cajas) · Hoja '+fmtN(r.i.rec)+' und · '+(r.inv>r.i.rec?'sobran ':'faltan ')+fmtN(Math.abs(r.inv-r.i.rec))+' und')});
+  pend.forEach(r=>{h+=row(r,'',(v.facs.length?'⏳ ':'')+'Recibido '+fmtN(r.i.rec)+' und · no está en las facturas cargadas')});
+  if(ok.length)h+='<button class="lnk" id="tOk" style="margin:8px 0">'+(verShowOk?'Ocultar':'Ver')+' las '+ok.length+' que coinciden</button>'+(verShowOk?ok.map(r=>row(r,'done','✔ '+fmtN(r.inv)+' und ('+fmtN(r.cases)+' cajas)')).join(''):'');
+  $('#vRes').innerHTML=h;
+}
+$('#vRes').addEventListener('click',e=>{
+  const rj=e.target.closest('[data-crej]');
+  if(rj){const r=verCompare(ver).rows[+rj.dataset.crej];if(r){for(const s of r.src){s.l.rej=[...(s.l.rej||[]),r.i.item]}persist();renderVer()}return}
+  const ok=e.target.closest('[data-cok]'),fx=e.target.closest('[data-cfix]');if(!ok&&!fx)return;
+  const r=verCompare(ver).rows[+(ok||fx).dataset[ok?'cok':'cfix']];if(!r)return;
+  let val=r.inv;
+  if(fx){const t=prompt('¿Cuántas unidades recibidas dice la hoja para '+(r.i.desc||r.i.item)+'?',r.i.rec==null?'':r.i.rec);if(t==null)return;val=parseInt(t,10);if(isNaN(val))return}
+  r.i.rec=val;if(r.i.exp==null)r.i.exp=val;r.i.fl={...(r.i.fl||{}),v:'user'};if(ok&&r.i.fl.item==='unk')r.i.fl.item='user';
+  if(ok&&r.approx&&r.src[0]&&r.src[0].item){r.i.item=r.src[0].item;r.i.fl.item='user';const K=knownItems(ver.sup);if(K[r.i.item])r.i.desc=K[r.i.item].desc}
+  learnItems(ver.sup,[r.i]);persist();renderVer();
+});
+document.addEventListener('click',e=>{if(e.target.id==='vHoja')openHoja()});
+$('#vRes').addEventListener('click',e=>{const b=e.target.closest('[data-xadd]');if(!b)return;const x=verCompare(ver).extra[+b.dataset.xadd];if(!x)return;
+  const K=knownItems(ver.sup),k=K[x.item]||{},t=prompt('¿Cuántas unidades recibidas dice la hoja para '+(k.desc||x.l.desc||x.item)+'?',x.u);if(t==null)return;const n=parseInt(t,10);if(isNaN(n))return;
+  ver.items.push({item:x.item,desc:k.desc||x.l.desc||'',uom:'EA',pack:x.pack||k.pack||null,exp:n,rec:n,dmg:0,fl:{item:'user',v:'user'}});persist();renderVer()});
+
+/* ---------- Ver y corregir la hoja ---------- */
+let hoja=null;
+function openHoja(){hoja={items:ver.items.map(i=>({...i,fl:{...(i.fl||{})}})),po:ver.po};showOnly('s5');renderHoja()}
+function renderHoja(){
+  $('#hjImg').innerHTML=(ver._thumbs||[]).map(t=>'<img src="'+t+'" alt="Hoja">').join('');
+  $('#hjPo').value=hoja.po||'';
+  $('#hjL').innerHTML=hoja.items.map((i,k)=>{const f=i.fl||{},warn=f.v==='unc'||f.item==='unk'||f.item==='new'||i.rec==null||!i.pack;
+    return '<div class="ln'+(warn?' warn':'')+'"><div class="row lnh"><input type="text" class="hi" data-k="'+k+'" value="'+esc(i.item||'')+'" inputmode="numeric" placeholder="Ítem" aria-label="Ítem"><button class="sec sm" data-hdel="'+k+'" aria-label="Quitar fila">🗑</button></div>'+
+      '<input type="text" class="hd" data-k="'+k+'" value="'+esc(i.desc||'')+'" placeholder="Descripción" aria-label="Descripción" style="margin-top:6px">'+
+      (f.item==='corr'?'<small class="mu">código corregido con un producto conocido</small>':(f.item==='unk'?'<small class="tbad">código dudoso</small>':(f.item==='new'?'<small class="mu">producto nuevo para la app</small>':'')))+
+      '<div class="row lnq"><span class="mu">Caja</span><input class="hn" data-f="pack" data-k="'+k+'" type="number" inputmode="numeric" value="'+(i.pack??'')+'"><span class="mu">Esperado</span><input class="hn" data-f="exp" data-k="'+k+'" type="number" inputmode="numeric" value="'+(i.exp??'')+'"><span class="mu">Recibido</span><input class="hn'+(f.v==='unc'?' wq':'')+'" data-f="rec" data-k="'+k+'" type="number" inputmode="numeric" value="'+(i.rec??'')+'"></div></div>'}).join('');
+  hjSum();
+}
+function hjSum(){const s=hoja.items.reduce((a,i)=>a+(+i.rec||0),0);$('#hjSum').textContent=fmtN(s);const t=ver.totRead&&ver.totRead.rec;$('#hjTotS').innerHTML=t!=null?(t===s?'<span class="tok">✔ Coincide con el total impreso ('+fmtN(t)+')</span>':'<span class="tbad">El total impreso se leyó '+fmtN(t)+'. Revisa las filas en amarillo.</span>'):'<span class="mu">Compara con el “Totals” de la hoja.</span>'}
+$('#hjL').addEventListener('input',e=>{const t=e.target,i=hoja.items[+t.dataset.k];if(!i)return;
+  if(t.classList.contains('hi')){i.item=t.value.replace(/\D/g,'');i.fl=i.fl||{};i.fl.item='user'}
+  if(t.classList.contains('hd'))i.desc=t.value;
+  if(t.classList.contains('hn')){i[t.dataset.f]=t.value===''?null:parseInt(t.value,10);i.fl=i.fl||{};i.fl.v='user';t.classList.remove('wq');hjSum()}});
+$('#hjL').addEventListener('click',e=>{const d=e.target.closest('[data-hdel]');if(d){hoja.items.splice(+d.dataset.hdel,1);renderHoja()}});
+$('#hjAdd').onclick=()=>{hoja.items.push({item:'',desc:'',uom:'EA',pack:null,exp:null,rec:null,dmg:0,fl:{v:'user',item:'user'}});renderHoja();const x=document.querySelectorAll('#hjL .hi');x[x.length-1]&&x[x.length-1].focus()};
+$('#hjCancel').onclick=()=>{hoja=null;showOnly('s3');renderVer()};
+$('#hjSave').onclick=()=>{
+  ver.po=$('#hjPo').value.replace(/\D/g,'')||ver.po;
+  ver.items=hoja.items.filter(i=>i.item||i.desc).map(i=>({...i,fl:{...(i.fl||{}),v:i.rec==null?'unc':((i.fl||{}).v||'ok')}}));
+  ver.tot={exp:ver.items.reduce((a,i)=>a+(i.exp||0),0),rec:ver.items.reduce((a,i)=>a+(i.rec||0),0),dmg:0};
+  learnItems(ver.sup,ver.items);hoja=null;persist();showOnly('s3');renderVer();
+};
+
+db.fac=db.fac||[];db.eq=db.eq||{};
+setHomeSec((()=>{try{return localStorage.getItem('recepcion-sec')||'rec'}catch(e){return 'rec'}})());
 </script>
 </body></html>

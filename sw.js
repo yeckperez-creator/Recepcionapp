@@ -1,6 +1,6 @@
 /* Recepción con escáner: funciona sin internet.
    Cambia VERSION cuando subas una versión nueva de la app. */
-const VERSION = 'recepcion-v5';
+const VERSION = 'recepcion-v7';
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 const LIBS = [
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
