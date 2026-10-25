@@ -1,6 +1,6 @@
 /* Recepción con escáner: funciona sin internet.
    Cambia VERSION cuando subas una versión nueva de la app. */
-const VERSION='recepcion-v11';
+const VERSION='recepcion-v12';
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-192.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 const LIBS = [
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
@@ -83,7 +83,7 @@ self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil((async () => {
     const cs = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const c of cs) { if ('focus' in c) return c.focus(); }
-    if (self.clients.openWindow) return self.clients.openWindow('./');
+    for (const c of cs) { if ('focus' in c) { c.postMessage({ open: 'ven' }); return c.focus(); } }
+    if (self.clients.openWindow) return self.clients.openWindow('./?v=ven');
   })());
 });
