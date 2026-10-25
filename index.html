@@ -74,7 +74,7 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
 .hr button{flex:none}
 #up{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:48px;height:48px;border-radius:50%;padding:0;font-size:20px;box-shadow:0 4px 12px var(--sh);z-index:6}
 .seg{display:flex;gap:6px;margin-bottom:12px}
-.seg button{flex:1;padding:10px;font-size:15px}
+.seg button{flex:1;padding:10px 4px;font-size:14px;white-space:nowrap}
 .seg button:not(.on){background:transparent;color:var(--mu);border:1px solid var(--bd)}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{padding:4px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--bd);font-size:13px;font-weight:600}
@@ -117,6 +117,34 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
 .hjimg{display:flex;gap:6px;overflow-x:auto;max-height:300px}
 .hjimg img{width:auto;max-height:300px;flex:none}
 .hide{display:none!important}
+/* Vencimientos */
+:root{--or:#c2410c;--orb:#ffedd5}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--or:#ff9a5a;--orb:#3a2416}}
+:root[data-theme="dark"]{--or:#ff9a5a;--orb:#3a2416}
+.vban{display:flex;gap:10px;align-items:center;background:var(--badb);border:1px solid var(--bad);color:var(--bad);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-weight:600}
+.vban span{flex:1}
+.vban button{flex:none;background:var(--bad);color:#fff;padding:8px 12px}
+.vl{border-left:6px solid var(--ok)}
+.vl.ya{border-left-color:var(--bad);background:var(--badb)}
+.vl.sem{border-left-color:var(--or);background:var(--orb)}
+.vl.mes{border-left-color:var(--wr)}
+.vl.cl{border-left-color:var(--bd);opacity:.8}
+.vst{font-weight:600}
+.ya .vst{color:var(--bad)}.sem .vst{color:var(--or)}.mes .vst{color:var(--wr)}.ok .vst{color:var(--ok)}
+.chip.r{background:var(--badb);color:var(--bad);border-color:var(--bad)}
+.chip.o{background:var(--orb);color:var(--or);border-color:var(--or)}
+.chip.y{background:var(--wrb);color:var(--wr);border-color:var(--wr)}
+.chip.g{background:var(--okb);color:var(--ok);border-color:var(--ok)}
+.chip.sel{outline:2px solid var(--ac);outline-offset:1px}
+button.chip{padding:6px 10px}
+.vexp{font-size:20px;font-weight:700;letter-spacing:1px}
+.vhint{font-size:13px;margin-top:4px;min-height:18px}
+.vq{gap:6px}.vq>*{flex:none}.vq input{width:90px!important;text-align:center;font-weight:700}
+.vacts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#vsv{max-height:260px}
+.vh{padding:8px 10px;border-bottom:1px solid var(--bd);font-size:14px}
+.vh:last-child{border-bottom:0}
+.vh small{display:block;color:var(--mu)}
 .mu{color:var(--mu);font-size:13px}
 </style></head>
 <body>
@@ -124,7 +152,8 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
 
 <div id="s1">
   <button id="bInstall" class="full hide" style="margin:0 0 12px">📲 Instalar como app</button>
-  <div class="seg" id="seg"><button data-sec="rec" class="on">📦 Recepción</button><button data-sec="fac">🧾 Facturas</button></div>
+  <div id="venBan" class="vban hide"><span id="venBanT"></span><button id="venBanB">Ver</button></div>
+  <div class="seg" id="seg"><button data-sec="rec" class="on">📦 Recepción</button><button data-sec="fac">🧾 Facturas</button><button data-sec="ven">📅 Vencidos</button></div>
   <div id="secRec">
   <div class="card">
     <p class="h2">Nueva recepción</p>
@@ -154,6 +183,21 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
       <p class="mu">Sirve el PDF escaneado, el PDF de Oracle o una foto. Si subes el reporte diario completo, la app separa las hojas de cada orden y las facturas de todos los proveedores, y pone cada factura con su orden.</p>
     </div>
     <div class="card hide" id="vhist"><p class="h2">Órdenes verificadas</p><div id="vl"></div></div>
+  </div>
+  <div id="secVen" class="hide">
+    <div class="card">
+      <div class="row"><button id="venAdd">＋ Agregar lote</button><button id="venScan" class="sec">📷 Escanear</button></div>
+      <div class="chips" id="venChips" style="margin-top:10px"></div>
+      <div class="srch"><input type="text" id="venQ" placeholder="🔍 Buscar producto, código o lote" autocomplete="off"><button id="venQx" class="hide" aria-label="Borrar búsqueda" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:6px 10px;background:transparent;color:var(--mu)">✕</button></div>
+      <div class="tabs" id="venTabs" style="margin-top:8px"><button data-v="pend" class="on">Por retirar</button><button data-v="all">Todos</button><button data-v="hist">Historial</button></div>
+      <div id="venList"></div>
+    </div>
+    <div class="card">
+      <div class="row tools" style="flex-wrap:wrap"><button id="venXls" class="sec">⬇ Excel</button><button id="venShare" class="sec">📤 Resumen</button><button id="venIcs" class="sec">📅 Al calendario</button></div>
+      <div class="row tools" style="flex-wrap:wrap;margin-bottom:0"><button id="venNotif" class="sec">🔔 Avisos</button><button id="venBak" class="sec">💾 Respaldo</button><button id="venRes" class="sec">♻ Restaurar</button></div>
+      <input type="file" id="venResF" accept="application/json,.json" class="hide">
+      <p class="mu" id="venRules" style="margin:8px 0 0"></p>
+    </div>
   </div>
 </div>
 
@@ -212,6 +256,37 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
   </div>
 </div>
 
+<div id="s6" class="hide">
+  <div class="card">
+    <p class="h2" id="vfT">Agregar lote</p>
+    <label for="vfCode">Código de barras</label>
+    <div class="row"><input type="text" id="vfCode" inputmode="numeric" autocomplete="off" placeholder="Escanea o escribe"><button id="vfScan" class="sm" style="padding:10px 12px">📷</button></div>
+    <label for="vfName">Producto</label><input type="text" id="vfName" list="vfNames" autocomplete="off" placeholder="Nombre del producto"><datalist id="vfNames"></datalist>
+    <label for="vfLote">Lote</label><input type="text" id="vfLote" autocomplete="off" autocapitalize="characters" placeholder="Como aparece en el empaque">
+    <label for="vfExp">Vence</label><input type="text" id="vfExp" class="vexp" inputmode="numeric" autocomplete="off" placeholder="DD/MM/AAAA o MM/AAAA">
+    <div id="vfHint" class="vhint mu">Escribe la fecha como aparece: con día (25/10/2026) o solo mes y año (10/2026).</div>
+    <label>Cantidad (unidades)</label>
+    <div class="row vq"><button class="sec" data-vq="-1">−</button><input type="number" id="vfQty" inputmode="numeric" min="1" value="1"><button class="sec" data-vq="1">+</button></div>
+    <label for="vfLoc">Ubicación (opcional)</label><input type="text" id="vfLoc" list="vfLocs" autocomplete="off" placeholder="Pasillo, góndola o depósito"><datalist id="vfLocs"></datalist>
+    <label for="vfNote">Nota (opcional)</label><input type="text" id="vfNote" autocomplete="off">
+    <p id="vfWarn" class="tbad hide" style="margin:8px 0 0"></p>
+  </div>
+  <div class="card totbox">
+    <div class="row"><button id="vfCancel" class="sec">Cancelar</button><button id="vfMore" class="sec">Guardar y otro</button><button id="vfSave">Guardar</button></div>
+  </div>
+</div>
+<div id="va" class="modal hide"><div class="mbox"><div class="row"><b style="flex:1" id="vaT"></b><button id="vaX" class="sec sm" aria-label="Cerrar">✕</button></div>
+  <div id="vaInfo" class="mu"></div>
+  <label for="vaQty">Cantidad</label><div class="row vq"><button class="sec" data-aq="-1">−</button><input type="number" id="vaQty" inputmode="numeric" min="1"><button class="sec" data-aq="1">+</button><span class="mu" id="vaOf"></span></div>
+  <div class="vacts" style="margin-top:8px"><button data-act="retirado">✔ Retirado</button><button data-act="vendido" class="sec">🛒 Vendido</button><button data-act="devuelto" class="sec">↩ Devuelto al proveedor</button><button data-act="rebajado" class="sec">🏷 Rebajado</button><button data-act="edit" class="sec">✏ Editar</button><button data-act="borrar" class="sec">🗑 Borrar</button></div>
+  <div id="vaHist" class="mlist" style="max-height:30vh;margin-top:6px"></div>
+</div></div>
+<div id="vs" class="modal hide"><div class="mbox"><div class="row"><b style="flex:1">Escanea el código</b><button id="vsX" class="sec sm" aria-label="Cerrar">✕</button></div>
+  <div class="vw"><video id="vsv" playsinline muted></video></div>
+  <p class="mu" id="vsT" style="margin:0">Apunta al código de barras o al código cuadrado (DataMatrix) del empaque.</p>
+  <div class="row"><button id="vsPh" class="sec">📸 Foto</button><button id="vsTorch" class="sec">🔦 Linterna</button></div>
+  <input type="file" id="vsF" accept="image/*" capture="environment" class="hide">
+</div></div>
 <div id="pk" class="modal hide"><div class="mbox"><div class="row"><b style="flex:1">Elige el producto de la hoja</b><button id="pkX" class="sec sm" aria-label="Cerrar">✕</button></div><p id="pkHint" class="mu" style="margin:0"></p><input type="text" id="pkQ" placeholder="🔍 Buscar"><div id="pkL" class="mlist"></div></div></div>
 <div id="busy" class="busy hide"><div class="bbox"><div class="spin"></div><p id="busyT" style="margin:0">Procesando…</p></div></div>
 
@@ -296,7 +371,7 @@ function openRec(id){
   $('#s1').classList.add('hide');$('#s2').classList.remove('hide');$('#rname').textContent=rec.name+' · '+fdate(rec.date);
   render();updUndo();idle();scrollTo(0,0);startCam();
 }
-function goHome(){stopCam();pairing=null;rec=null;['#s2','#s3','#s4','#s5'].forEach(x=>$(x).classList.add('hide'));$('#s1').classList.remove('hide');$('#map').classList.add('hide');$('#f').value='';renderHome();scrollTo(0,0)}
+function goHome(){stopCam();pairing=null;rec=null;['#s2','#s3','#s4','#s5','#s6'].forEach(x=>$(x).classList.add('hide'));$('#s1').classList.remove('hide');$('#map').classList.add('hide');$('#f').value='';renderHome();scrollTo(0,0)}
 $('#bHome').onclick=goHome;
 
 /* ---------- Lectura de la hoja (Excel, CSV o Word) ---------- */
@@ -1433,14 +1508,15 @@ const fmtN=n=>Number(n||0).toLocaleString('es-VE',{maximumFractionDigits:2});
 
 let ver=null,draft=null,draftDone=null;
 function busy(t){const b=$('#busy');if(t===false){b.classList.add('hide');return}b.classList.remove('hide');$('#busyT').textContent=t}
-function showOnly(id){['s1','s2','s3','s4','s5'].forEach(s=>$('#'+s).classList.toggle('hide',s!==id));scrollTo(0,0)}
+function showOnly(id){['s1','s2','s3','s4','s5','s6'].forEach(s=>$('#'+s).classList.toggle('hide',s!==id));scrollTo(0,0)}
 
 /* ---------- Pestañas de inicio ---------- */
 function setHomeSec(s){
-  $('#secRec').classList.toggle('hide',s!=='rec');$('#secFac').classList.toggle('hide',s!=='fac');
+  $('#secRec').classList.toggle('hide',s!=='rec');$('#secFac').classList.toggle('hide',s!=='fac');$('#secVen').classList.toggle('hide',s!=='ven');
   document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.sec===s));
-  $('#ttl').textContent=s==='fac'?'🧾 Verificar facturas':'📦 Recepción con escáner';
+  $('#ttl').textContent=s==='fac'?'🧾 Verificar facturas':(s==='ven'?'📅 Vencimientos':'📦 Recepción con escáner');
   if(s==='fac')renderFacHome();
+  if(s==='ven'&&window.renderVen)renderVen();
   try{localStorage.setItem('recepcion-sec',s)}catch(e){}
 }
 $('#seg').onclick=e=>{const b=e.target.closest('button');if(b)setHomeSec(b.dataset.sec)};
@@ -2013,5 +2089,292 @@ $('#hjSave').onclick=()=>{
 
 db.fac=db.fac||[];db.eq=db.eq||{};
 setHomeSec((()=>{try{return localStorage.getItem('recepcion-sec')||'rec'}catch(e){return 'rec'}})());
+</script>
+<script>
+/* ======================= VENCIMIENTOS =======================
+   Cada lote (producto + lote) con su fecha. Regla de la tienda: retirar N días antes del vencimiento
+   (fecha con día) o el día D del mes (fecha de solo mes y año). Todo queda en este teléfono. */
+(()=>{
+const DAY=864e5,pad=n=>String(n).padStart(2,'0');
+const V=()=>{const v=db.ven=db.ven||{};v.lots=v.lots||[];v.hist=v.hist||[];v.prods=v.prods||{};v.cfg=Object.assign({days:5,mday:25},v.cfg||{});return v};
+const todayT=()=>{const d=new Date();return Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())};
+const showT=t=>{const d=new Date(t);return pad(d.getUTCDate())+'/'+pad(d.getUTCMonth()+1)+'/'+d.getUTCFullYear()};
+
+/* Fecha escrita como aparece en el empaque: 25/10/2026, 25-10-26, 251026, 10/2026, 1026… */
+function parseExp(s){
+  s=String(s||'').trim();if(!s)return null;
+  let d=null,m,y;const p=s.split(/[\/\-.\s]+/).filter(Boolean);
+  if(p.length===3&&p.every(x=>/^\d+$/.test(x)))[d,m,y]=p.map(Number);
+  else if(p.length===2&&p.every(x=>/^\d+$/.test(x)))[m,y]=p.map(Number);
+  else if(p.length===1&&/^\d+$/.test(p[0])){const t=p[0];
+    if(t.length===8){d=+t.slice(0,2);m=+t.slice(2,4);y=+t.slice(4)}
+    else if(t.length===6){const mm=+t.slice(0,2),yy=+t.slice(2);if(mm>=1&&mm<=12&&yy>=2000&&yy<2100){m=mm;y=yy}else{d=+t.slice(0,2);m=+t.slice(2,4);y=+t.slice(4)}}
+    else if(t.length===4){m=+t.slice(0,2);y=+t.slice(2)}
+    else return null}
+  else return null;
+  if(y<100)y+=2000;if(!(y>=2000&&y<2100)||!(m>=1&&m<=12))return null;
+  if(d!=null){if(!(d>=1&&d<=new Date(y,m,0).getDate()))return null;return y+'-'+pad(m)+'-'+pad(d)}
+  return y+'-'+pad(m);
+}
+const isFull=e=>e.length===10;
+const showExp=e=>isFull(e)?e.slice(8)+'/'+e.slice(5,7)+'/'+e.slice(0,4):e.slice(5,7)+'/'+e.slice(0,4);
+const MES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+/* Día en que hay que retirarlo */
+function retiroT(e){const c=V().cfg,[y,m,d]=e.split('-').map(Number);
+  if(isFull(e))return Date.UTC(y,m-1,d)-c.days*DAY;
+  return Date.UTC(y,m-1,Math.min(c.mday,new Date(y,m,0).getDate()))}
+/* Último día en que el producto sirve (para fechas de mes y año, el último día del mes) */
+function expT(e){const[y,m,d]=e.split('-').map(Number);return isFull(e)?Date.UTC(y,m-1,d):Date.UTC(y,m,0)}
+function stateOf(l){
+  const t=retiroT(l.exp),n=Math.round((t-todayT())/DAY),venc=todayT()>expT(l.exp);
+  const k=n<=0?'ya':(n<=7?'sem':(n<=30?'mes':'ok'));
+  const txt=venc?'❗ Vencido el '+showT(expT(l.exp))+' · retirar ya':(n<0?'🔴 Retirar ya (tocaba el '+showT(t)+')':(n===0?'🔴 Retirar hoy':(n===1?'🟠 Retirar mañana ('+showT(t)+')':(k==='sem'?'🟠':(k==='mes'?'🟡':'🟢'))+' Retirar el '+showT(t)+' · en '+n+' días')));
+  return{k,n,t,txt,venc};
+}
+const active=()=>V().lots.filter(l=>!l.closed&&l.qty>0);
+const keyOf=(code,name,lote)=>(code?'c:'+norm(code):'n:'+alnum(name))+'|'+alnum(lote);
+const ACT={alta:'Registrado',suma:'Sumado',edit:'Editado',retirado:'Retirado',vendido:'Vendido',devuelto:'Devuelto al proveedor',rebajado:'Rebajado',borrado:'Borrado'};
+function logH(l,act,qty,note){V().hist.unshift({id:uid(),t:Date.now(),act,qty:qty==null?l.qty:qty,lot:l.id,name:l.name,code:l.code||'',lote:l.lote||'',exp:l.exp,loc:l.loc||'',note:note||''});if(V().hist.length>3000)V().hist.length=3000}
+function saveV(){persist();syncSchedule();checkDue(false)}
+
+/* ---------- Lista ---------- */
+let vTab='pend',vChip='',vQ='';
+const matchQ=l=>{if(!vQ)return true;const w=fold(vQ).split(/\s+/).filter(Boolean),txt=fold(l.name+' '+(l.code||'')+' '+(l.lote||'')+' '+(l.loc||''));return w.every(x=>txt.includes(x)||(alnum(x)&&alnum(txt).includes(alnum(x))))};
+function renderVen(){
+  const v=V(),A=active().map(l=>({l,s:stateOf(l)})).sort((a,b)=>a.s.t-b.s.t||a.l.name.localeCompare(b.l.name));
+  const cnt=k=>A.filter(x=>x.s.k===k),U=xs=>xs.reduce((a,x)=>a+x.l.qty,0);
+  const chip=(k,cls,lab)=>{const xs=cnt(k);return '<button class="chip '+cls+(vChip===k?' sel':'')+'" data-vc="'+k+'">'+lab+' '+xs.length+(xs.length?' · '+U(xs)+' und':'')+'</button>'};
+  $('#venChips').innerHTML=chip('ya','r','🔴 Retirar ya')+chip('sem','o','🟠 Esta semana')+chip('mes','y','🟡 En 30 días')+chip('ok','g','🟢 Más adelante');
+  document.querySelectorAll('#venTabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===vTab));
+  let h='';
+  if(vTab==='hist'){
+    const H=v.hist.filter(x=>!vQ||matchQ(x)).slice(0,300);
+    h=H.length?H.map(x=>'<div class="vh"><b>'+esc(ACT[x.act]||x.act)+(x.qty!=null&&x.act!=='edit'?' · '+x.qty+' und':'')+'</b> — '+esc(x.name)+'<small>Lote '+esc(x.lote||'—')+' · vence '+showExp(x.exp)+(x.loc?' · '+esc(x.loc):'')+' · '+fdate(x.t)+(x.note?' · '+esc(x.note):'')+'</small></div>').join(''):'<p class="mu">Aún no hay movimientos.</p>';
+  }else{
+    let L=A.filter(x=>matchQ(x.l));
+    if(vChip)L=L.filter(x=>x.s.k===vChip);else if(vTab==='pend')L=L.filter(x=>x.s.k==='ya'||x.s.k==='sem');
+    h=L.map(({l,s})=>'<div class="it vl '+s.k+'" data-vl="'+l.id+'"><div class="inf"><b>'+esc(l.name||'(sin nombre)')+'</b><small>Lote '+esc(l.lote||'—')+' · vence '+showExp(l.exp)+' · '+l.qty+' und'+(l.loc?' · '+esc(l.loc):'')+(l.reb?' · 🏷 rebajado':'')+'</small><small class="vst">'+s.txt+'</small></div><button class="sec sm" data-vl="'+l.id+'">Acción</button></div>').join('');
+    if(!h)h='<p class="mu">'+(A.length?(vTab==='pend'&&!vChip&&!vQ?'Nada por retirar esta semana. 👍':'Nada con ese filtro.'):'Aún no hay lotes. Toca “＋ Agregar lote” o “📷 Escanear”.')+'</p>';
+  }
+  $('#venList').innerHTML=h;
+  const c=v.cfg;$('#venRules').innerHTML='Regla: retirar <b>'+c.days+' días antes</b> si la fecha trae día; si es de mes y año, el <b>día '+c.mday+'</b> de ese mes. <button class="lnk" id="venCfg">Cambiar</button> · '+active().length+' lotes activos';
+  checkDue(false);
+}
+window.renderVen=renderVen;
+$('#venChips').onclick=e=>{const b=e.target.closest('[data-vc]');if(!b)return;vChip=vChip===b.dataset.vc?'':b.dataset.vc;if(vChip&&vTab==='hist')vTab='all';renderVen()};
+$('#venTabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;vTab=b.dataset.v;vChip='';renderVen()};
+$('#venQ').oninput=e=>{vQ=e.target.value.trim();$('#venQx').classList.toggle('hide',!vQ);renderVen()};
+$('#venQx').onclick=()=>{$('#venQ').value='';vQ='';$('#venQx').classList.add('hide');renderVen()};
+$('#venList').onclick=e=>{const r=e.target.closest('[data-vl]');if(r)openAct(r.dataset.vl)};
+document.addEventListener('click',e=>{if(e.target.id!=='venCfg')return;const c=V().cfg;
+  const d=prompt('¿Cuántos días antes del vencimiento se retira un producto con fecha completa (día/mes/año)?',c.days);if(d==null)return;const nd=parseInt(d,10);if(!(nd>=0&&nd<=60)){alert('Escribe un número de días entre 0 y 60.');return}
+  const m=prompt('Para fechas de solo mes y año, ¿qué día de ese mes se retira?',c.mday);if(m==null)return;const nm=parseInt(m,10);if(!(nm>=1&&nm<=31)){alert('Escribe un día entre 1 y 31.');return}
+  c.days=nd;c.mday=nm;saveV();renderVen()});
+
+/* ---------- Formulario ---------- */
+let editing=null,lastLoc='';
+function prodName(code){const n=norm(code);if(!n)return'';const p=V().prods[n];if(p)return p;
+  for(const r of db.list||[])for(const it of r.items||[])if((it.ni===n||it.nc===n)&&it.desc)return it.desc;
+  const l=V().lots.find(x=>x.code&&norm(x.code)===n);return l?l.name:''}
+function fillLists(){const v=V(),names=new Set([...Object.values(v.prods),...v.lots.map(l=>l.name)].filter(Boolean)),locs=new Set(v.lots.map(l=>l.loc).filter(Boolean));
+  $('#vfNames').innerHTML=[...names].slice(0,500).map(n=>'<option value="'+esc(n)+'">').join('');$('#vfLocs').innerHTML=[...locs].map(n=>'<option value="'+esc(n)+'">').join('')}
+function openForm(l,pre){
+  editing=l||null;fillLists();nameDirty=false;
+  $('#vfT').textContent=l?'Editar lote':'Agregar lote';$('#vfMore').classList.toggle('hide',!!l);$('#vfSave').textContent=l?'Guardar cambios':'Guardar';
+  const x=l||pre||{};$('#vfCode').value=x.code||'';$('#vfName').value=x.name||(x.code?prodName(x.code):'');$('#vfLote').value=x.lote||'';
+  $('#vfExp').value=x.exp?showExp(x.exp):'';$('#vfQty').value=x.qty||1;$('#vfLoc').value=l?(l.loc||''):(x.loc!=null?x.loc:lastLoc);$('#vfNote').value=x.note||'';
+  $('#vfWarn').classList.add('hide');showOnly('s6');updHint();
+  setTimeout(()=>{const f=!$('#vfName').value?(x.code?'#vfName':'#vfCode'):(!$('#vfLote').value?'#vfLote':'#vfExp');$(f).focus()},60);
+}
+function updHint(){const s=$('#vfExp').value.trim(),e=parseExp(s),hn=$('#vfHint');
+  if(!s){hn.className='vhint mu';hn.textContent='Escribe la fecha como aparece: con día (25/10/2026) o solo mes y año (10/2026).';return}
+  if(!e){hn.className='vhint tbad';hn.textContent='No entiendo esa fecha. Ejemplos: 25/10/2026 · 10/2026';return}
+  const st=stateOf({exp:e});hn.className='vhint '+(st.k==='ya'?'tbad':'tok');
+  hn.textContent='Vence '+(isFull(e)?showExp(e):MES[+e.slice(5,7)-1]+' '+e.slice(0,4))+' → '+st.txt.replace(/^\S+\s/,'')}
+$('#vfExp').oninput=updHint;
+$('#vfExp').onblur=()=>{const e=parseExp($('#vfExp').value);if(e)$('#vfExp').value=showExp(e)};
+// el nombre se completa solo al escribir un código conocido, nunca encima de lo que la persona escribió
+let nameDirty=false,codeT=0;
+$('#vfName').oninput=()=>{nameDirty=true};
+$('#vfCode').oninput=()=>{clearTimeout(codeT);codeT=setTimeout(()=>{const n=prodName($('#vfCode').value);if(n&&!nameDirty&&!$('#vfName').value.trim())$('#vfName').value=n},250)};
+document.querySelector('#s6 .vq').onclick=e=>{const b=e.target.closest('[data-vq]');if(!b)return;const q=$('#vfQty');q.value=Math.max(1,(parseInt(q.value,10)||0)+(+b.dataset.vq))};
+$('#vfScan').onclick=()=>openScan(applyScan);
+$('#venAdd').onclick=()=>openForm(null);
+$('#venScan').onclick=()=>openScan(raw=>{openForm(null);applyScan(raw)});
+$('#vfCancel').onclick=()=>{editing=null;showOnly('s1');setHomeSec('ven')};
+function applyScan(raw){
+  const g=gs1(raw);
+  if(g){if(g.gtin)$('#vfCode').value=g.gtin.replace(/^0/,'');if(g.lote)$('#vfLote').value=g.lote;if(g.exp)$('#vfExp').value=showExp(g.exp);updHint()}
+  else $('#vfCode').value=String(raw).trim();
+  const n=prodName($('#vfCode').value);if(n&&!$('#vfName').value)$('#vfName').value=n;
+  const f=!$('#vfName').value?'#vfName':(!$('#vfLote').value?'#vfLote':(!$('#vfExp').value?'#vfExp':'#vfQty'));setTimeout(()=>$(f).focus(),80);
+}
+/* Código GS1 (DataMatrix de medicamentos): (01) producto, (17) vencimiento AAMMDD, (10) lote */
+function gs1(s){
+  s=String(s||'').replace(/^\][A-Za-z]\d/,'');const G='\x1d',o={};
+  if(/^\(\d{2}\)/.test(s)){const re=/\((\d{2,4})\)([^(]*)/g;let m;while((m=re.exec(s))){if(m[1]==='01')o.gtin=m[2];else if(m[1]==='17')o.e6=m[2];else if(m[1]==='10')o.lote=m[2]}}
+  else{if(!/^01\d{14}./.test(s))return null;let i=0;
+    while(i<s.length){if(s[i]===G){i++;continue}const ai=s.slice(i,i+2);
+      if(ai==='01'||ai==='02'){o.gtin=s.slice(i+2,i+16);i+=16}
+      else if(['11','13','15','16','17'].includes(ai)){if(ai==='17'||(ai==='15'&&!o.e6))o.e6=s.slice(i+2,i+8);i+=8}
+      else if(ai==='10'||ai==='21'){let j=s.indexOf(G,i+2);if(j<0)j=s.length;if(ai==='10')o.lote=s.slice(i+2,j);i=j}
+      else break}}
+  if(o.e6&&/^\d{6}$/.test(o.e6)){const y=2000+ +o.e6.slice(0,2),m=+o.e6.slice(2,4),d=+o.e6.slice(4);if(m>=1&&m<=12)o.exp=d?y+'-'+pad(m)+'-'+pad(Math.min(d,new Date(y,m,0).getDate())):y+'-'+pad(m)}
+  return o.gtin||o.exp||o.lote?o:null;
+}
+function readForm(){
+  const code=$('#vfCode').value.trim(),name=$('#vfName').value.trim(),lote=$('#vfLote').value.trim().toUpperCase(),exp=parseExp($('#vfExp').value),qty=parseInt($('#vfQty').value,10),loc=$('#vfLoc').value.trim(),note=$('#vfNote').value.trim();
+  const w=m=>{const x=$('#vfWarn');x.textContent=m;x.classList.remove('hide');return null};
+  if(!name&&!code)return w('Escribe el nombre del producto o escanea su código.');
+  if(!exp)return w('La fecha de vencimiento no es válida. Ejemplos: 25/10/2026 · 10/2026');
+  if(!(qty>0))return w('La cantidad debe ser al menos 1.');
+  if(!lote&&!confirm('No escribiste el lote. Sin lote, este producto se distingue solo por la fecha. ¿Guardar igual?'))return null;
+  return{code,name:name||('Código '+code),lote,exp,qty,loc,note};
+}
+function saveForm(more){
+  const f=readForm();if(!f)return;const v=V();
+  if(f.code&&f.name)v.prods[norm(f.code)]=f.name;
+  if(editing){const l=editing,chg=[];
+    for(const k of ['code','name','lote','exp','qty','loc','note'])if(String(l[k]||'')!==String(f[k]||'')){chg.push(k==='exp'?'vence '+showExp(l.exp)+' → '+showExp(f.exp):(k==='qty'?'cantidad '+l.qty+' → '+f.qty:k));l[k]=f[k]}
+    l.upd=Date.now();if(chg.length)logH(l,'edit',l.qty,chg.join(', '));editing=null;saveV();showOnly('s1');setHomeSec('ven');return}
+  const key=keyOf(f.code,f.name,f.lote),same=v.lots.find(l=>!l.closed&&l.qty>0&&keyOf(l.code,l.name,l.lote)===key);
+  if(same&&f.lote){
+    if(same.exp===f.exp){if(!confirm('Ya tienes registrado este lote ('+same.qty+' und, vence '+showExp(same.exp)+'). ¿Sumar '+f.qty+' und?'))return;
+      same.qty+=f.qty;if(f.loc&&!same.loc)same.loc=f.loc;same.upd=Date.now();logH(same,'suma',f.qty);lastLoc=f.loc;saveV();say3('Sumado al lote '+same.lote+': ahora '+same.qty+' und');afterSave(more);return}
+    if(!confirm('El lote '+f.lote+' de este producto ya está registrado con vencimiento '+showExp(same.exp)+'. Revisa el empaque: ¿guardarlo igual con '+showExp(f.exp)+'?'))return;
+  }
+  const l={id:uid(),...f,created:Date.now(),upd:Date.now(),closed:false,reb:false};v.lots.push(l);logH(l,'alta',f.qty);lastLoc=f.loc;saveV();
+  const st=stateOf(l);say3((st.k==='ya'?'⚠ Guardado. Este lote ya debe retirarse.':'✔ Guardado · '+st.txt.replace(/^\S+\s/,'')));afterSave(more);
+}
+function afterSave(more){if(more){const loc=$('#vfLoc').value;openForm(null,{loc})}else{showOnly('s1');setHomeSec('ven')}}
+function say3(t){let m=document.getElementById('vToast');if(!m){m=document.createElement('div');m.id='vToast';m.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--tx);color:var(--bg);padding:10px 14px;border-radius:10px;font-weight:600;text-align:center;max-width:616px;margin:0 auto';document.body.appendChild(m)}m.textContent=t;m.classList.remove('hide');clearTimeout(say3.t);say3.t=setTimeout(()=>m.classList.add('hide'),3500)}
+$('#vfSave').onclick=()=>saveForm(false);
+$('#vfMore').onclick=()=>saveForm(true);
+
+/* ---------- Acciones sobre un lote ---------- */
+let actLot=null;
+function openAct(id){
+  const l=V().lots.find(x=>x.id===id);if(!l)return;actLot=l;const s=stateOf(l);
+  $('#vaT').textContent=l.name;
+  $('#vaInfo').innerHTML='Lote <b>'+esc(l.lote||'—')+'</b> · vence <b>'+showExp(l.exp)+'</b>'+(l.code?' · cód. '+esc(l.code):'')+(l.loc?' · '+esc(l.loc):'')+'<br><span class="vst '+s.k+'">'+s.txt+'</span>';
+  $('#vaQty').value=l.qty;$('#vaOf').textContent='de '+l.qty+' und';
+  const H=V().hist.filter(x=>x.lot===l.id);$('#vaHist').innerHTML=H.map(x=>'<div class="vh"><b>'+esc(ACT[x.act]||x.act)+(x.act!=='edit'?' · '+x.qty+' und':'')+'</b><small>'+fdate(x.t)+(x.note?' · '+esc(x.note):'')+'</small></div>').join('');
+  $('#va').classList.remove('hide');
+}
+$('#vaX').onclick=()=>$('#va').classList.add('hide');
+document.querySelector('#va .vq').onclick=e=>{const b=e.target.closest('[data-aq]');if(!b||!actLot)return;const q=$('#vaQty');q.value=Math.min(actLot.qty,Math.max(1,(parseInt(q.value,10)||0)+(+b.dataset.aq)))};
+document.querySelector('#va .vacts').onclick=e=>{
+  const b=e.target.closest('[data-act]');if(!b||!actLot)return;const l=actLot,a=b.dataset.act;
+  if(a==='edit'){$('#va').classList.add('hide');openForm(l);return}
+  if(a==='borrar'){if(!confirm('¿Borrar este lote? Úsalo solo si lo registraste por error (si lo sacaste de la tienda, usa “Retirado”).'))return;logH(l,'borrado',l.qty);V().lots=V().lots.filter(x=>x!==l);$('#va').classList.add('hide');saveV();renderVen();return}
+  if(a==='rebajado'){l.reb=true;logH(l,'rebajado',l.qty);$('#va').classList.add('hide');saveV();renderVen();say3('Marcado como rebajado');return}
+  const q=Math.min(l.qty,Math.max(1,parseInt($('#vaQty').value,10)||l.qty));
+  l.qty-=q;if(l.qty<=0){l.qty=0;l.closed=true}l.upd=Date.now();logH(l,a,q);$('#va').classList.add('hide');saveV();renderVen();
+  say3(ACT[a]+': '+q+' und de '+l.name+(l.qty?' · quedan '+l.qty:''));
+};
+
+/* ---------- Escáner (código de barras o DataMatrix) ---------- */
+let sStream=null,sLoop=0,sZx=null,sCb=null,sTorch=false;
+async function openScan(cb){
+  sCb=cb;$('#vs').classList.remove('hide');$('#vsT').textContent='Apunta al código de barras o al código cuadrado (DataMatrix) del empaque.';
+  try{
+    const id=(()=>{try{return localStorage.getItem('recepcion-camara')||''}catch(e){return ''}})(),size={width:{ideal:1280},height:{ideal:720}};
+    let s;try{s=await navigator.mediaDevices.getUserMedia({audio:false,video:id?{deviceId:{exact:id},...size}:{facingMode:{ideal:'environment'},...size}})}catch(e){s=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},...size}})}
+    sStream=s;const v=$('#vsv');v.srcObject=s;try{await v.play()}catch(e){}
+    if('BarcodeDetector' in window){let fm;try{fm=await BarcodeDetector.getSupportedFormats()}catch(e){}const det=fm&&fm.length?new BarcodeDetector({formats:fm}):new BarcodeDetector();const g=++sLoop;
+      const tick=async()=>{if(g!==sLoop)return;try{const r=await det.detect(v);if(g===sLoop&&r.length){gotCode(r[0].rawValue);return}}catch(e){}setTimeout(tick,150)};tick()}
+    else{const tr=s.getVideoTracks()[0],did=(tr&&tr.getSettings&&tr.getSettings().deviceId)||null;s.getTracks().forEach(t=>t.stop());sStream=null;await loadZX();sZx=new ZXing.BrowserMultiFormatReader();sZx.decodeFromVideoDevice(did,'vsv',r=>{if(r)gotCode(r.getText())})}
+  }catch(e){$('#vsT').textContent='No pude abrir la cámara ('+(e&&e.name||'error')+'). Usa 📸 Foto o escribe el código.'}
+}
+function closeScan(){sLoop++;if(sStream){sStream.getTracks().forEach(t=>t.stop());sStream=null}if(sZx){try{sZx.reset()}catch(e){}sZx=null}sTorch=false;$('#vs').classList.add('hide')}
+function gotCode(raw){beep(880);const cb=sCb;closeScan();if(cb)cb(raw)}
+$('#vsX').onclick=closeScan;
+$('#vsPh').onclick=()=>$('#vsF').click();
+$('#vsF').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;$('#vsT').textContent='Leyendo foto…';
+  try{let c='';if('BarcodeDetector' in window){let fm;try{fm=await BarcodeDetector.getSupportedFormats()}catch(x){}const r=await (fm&&fm.length?new BarcodeDetector({formats:fm}):new BarcodeDetector()).detect(await createImageBitmap(f));c=r[0]&&r[0].rawValue}
+    else{await loadZX();c=(await new ZXing.BrowserMultiFormatReader().decodeFromImageUrl(URL.createObjectURL(f))).getText()}
+    if(c)gotCode(c);else $('#vsT').textContent='No vi ningún código en la foto. Acércate más y con luz.'}catch(x){$('#vsT').textContent='No vi ningún código en la foto. Acércate más y con luz.'}};
+$('#vsTorch').onclick=async()=>{const t=sStream&&sStream.getVideoTracks()[0];if(!t){$('#vsT').textContent='La linterna necesita la cámara abierta.';return}
+  try{if(window.ImageCapture)await new ImageCapture(t).getPhotoCapabilities()}catch(e){}
+  try{await t.applyConstraints({advanced:[{torch:!sTorch}]});sTorch=!sTorch}catch(e){$('#vsT').textContent='Este celular no deja usar la linterna desde el navegador. Usa 📸 Foto con flash.'}};
+
+/* ---------- Avisos ---------- */
+function dueList(){return active().map(l=>({l,s:stateOf(l)})).filter(x=>x.s.k==='ya')}
+function checkDue(notify){
+  const D=dueList(),b=$('#venBan');
+  if(!D.length){b.classList.add('hide');return}
+  const u=D.reduce((a,x)=>a+x.l.qty,0);
+  $('#venBanT').textContent='📅 Hoy toca retirar '+D.length+(D.length===1?' lote':' lotes')+' ('+u+' und) por vencimiento';b.classList.remove('hide');
+  const day=new Date().toDateString(),v=V();
+  if(notify&&v.lastNotif!==day&&'Notification' in window&&Notification.permission==='granted'){
+    v.lastNotif=day;persist();
+    const body=D.slice(0,4).map(x=>x.l.name+' · lote '+(x.l.lote||'—')).join('\n')+(D.length>4?'\n… y '+(D.length-4)+' más':'');
+    const o={body,icon:'icon-192.png',badge:'icon-192.png',tag:'vencidos'};
+    (navigator.serviceWorker&&navigator.serviceWorker.ready?navigator.serviceWorker.ready.then(r=>r.showNotification('Retirar por vencimiento',o)):Promise.reject()).catch(()=>{try{new Notification('Retirar por vencimiento',o)}catch(e){}});
+  }
+}
+$('#venBanB').onclick=()=>{vTab='pend';vChip='ya';setHomeSec('ven');scrollTo(0,0)};
+$('#venNotif').onclick=async()=>{
+  if(!('Notification' in window)){alert('Este navegador no permite avisos. Igual verás el aviso rojo al abrir la app.');return}
+  let p=Notification.permission;if(p==='default')p=await Notification.requestPermission();
+  if(p!=='granted'){alert('Los avisos están bloqueados. Actívalos en los ajustes del navegador para esta app.');return}
+  await registerPeriodic();V().lastNotif='';checkDue(true);
+  alert('Avisos activados. Al abrir la app cada día te avisa lo que toca retirar. Con la app instalada, Android además puede avisarte aunque esté cerrada (lo decide el teléfono). Para no depender de eso, usa también “📅 Al calendario”.');
+};
+/* Para el aviso con la app cerrada: el service worker no puede leer los datos de la app, así que se le deja la lista de fechas en IndexedDB */
+function idb(){return new Promise((ok,ko)=>{const r=indexedDB.open('recepcion-venc',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error)})}
+async function syncSchedule(){try{const db2=await idb(),sch=active().map(l=>({t:retiroT(l.exp),n:l.name,lo:l.lote||''}));
+  await new Promise(ok=>{const tx=db2.transaction('kv','readwrite');tx.objectStore('kv').put(sch,'sch');tx.oncomplete=ok;tx.onerror=ok})}catch(e){}}
+async function registerPeriodic(){try{const r=await navigator.serviceWorker.ready;if(!('periodicSync' in r))return;const st=await navigator.permissions.query({name:'periodic-background-sync'});if(st.state==='granted')await r.periodicSync.register('vencidos',{minInterval:12*3600*1000})}catch(e){}}
+
+/* ---------- Calendario (.ics): recordatorios que no dependen de la app ---------- */
+$('#venIcs').onclick=()=>{
+  const A=active().map(l=>({l,t:Math.max(retiroT(l.exp),todayT())})),by={};A.forEach(x=>{(by[x.t]=by[x.t]||[]).push(x.l)});
+  const ts=Object.keys(by).map(Number).sort((a,b)=>a-b);if(!ts.length){alert('No hay lotes activos para pasar al calendario.');return}
+  const d8=t=>{const d=new Date(t);return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())},ex=s=>String(s).replace(/[\\;,]/g,m=>'\\'+m).replace(/\n/g,'\\n');
+  const now=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
+  const ev=ts.map(t=>{const L=by[t];return['BEGIN:VEVENT','UID:venc-'+d8(t)+'-'+L.map(l=>l.id).join('').slice(0,40)+'@recepcionapp','DTSTAMP:'+now,'DTSTART;VALUE=DATE:'+d8(t),'DTEND;VALUE=DATE:'+d8(t+DAY),
+    'SUMMARY:'+ex('Retirar vencidos: '+L.length+(L.length===1?' lote':' lotes')),'DESCRIPTION:'+ex(L.map(l=>l.name+' · lote '+(l.lote||'—')+' · vence '+showExp(l.exp)+' · '+l.qty+' und'+(l.loc?' · '+l.loc:'')).join('\n')),
+    'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+ex('Retirar vencidos'),'TRIGGER;RELATED=START:PT8H','END:VALARM','END:VEVENT'].join('\r\n')});
+  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Recepcionapp//Vencimientos//ES','CALSCALE:GREGORIAN',...ev,'END:VCALENDAR'].join('\r\n');
+  download(new Blob([ics],{type:'text/calendar'}),'Vencimientos '+new Date().toISOString().slice(0,10)+'.ics');
+  say3('Abre el archivo descargado con tu calendario para agregar los recordatorios ('+ts.length+(ts.length===1?' fecha':' fechas')+').');
+};
+function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
+
+/* ---------- Reportes ---------- */
+const ST={ya:'Retirar ya',sem:'Esta semana',mes:'En 30 días',ok:'Más adelante'};
+$('#venXls').onclick=()=>{
+  try{const v=V(),wb=XLSX.utils.book_new(),A=active().map(l=>({l,s:stateOf(l)})).sort((a,b)=>a.s.t-b.s.t);
+    const ws=XLSX.utils.aoa_to_sheet([['Producto','Código','Lote','Vence','Retirar el','Días para retirar','Estado','Cantidad','Ubicación','Rebajado','Nota','Registrado']].concat(A.map(({l,s})=>[l.name,l.code||'',l.lote||'',showExp(l.exp),showT(s.t),s.n,s.venc?'Vencido':ST[s.k],l.qty,l.loc||'',l.reb?'Sí':'',l.note||'',fdate(l.created)])));
+    ws['!cols']=[{wch:34},{wch:15},{wch:12},{wch:11},{wch:11},{wch:9},{wch:13},{wch:9},{wch:14},{wch:9},{wch:20},{wch:17}];XLSX.utils.book_append_sheet(wb,ws,'Activos');
+    const ws2=XLSX.utils.aoa_to_sheet([['Fecha','Acción','Producto','Código','Lote','Vence','Cantidad','Ubicación','Nota']].concat(v.hist.map(x=>[fdate(x.t),ACT[x.act]||x.act,x.name,x.code,x.lote,showExp(x.exp),x.act==='edit'?'':x.qty,x.loc||'',x.note||''])));
+    ws2['!cols']=[{wch:17},{wch:20},{wch:34},{wch:15},{wch:12},{wch:11},{wch:9},{wch:14},{wch:30}];XLSX.utils.book_append_sheet(wb,ws2,'Historial');
+    XLSX.writeFile(wb,'Vencimientos '+new Date().toISOString().slice(0,10)+'.xlsx');
+  }catch(e){alert('No pude crear el Excel. Revisa tu conexión y recarga.')}
+};
+$('#venShare').onclick=async()=>{
+  const A=active().map(l=>({l,s:stateOf(l)})).sort((a,b)=>a.s.t-b.s.t),L=['📅 Vencimientos al '+showT(todayT())];
+  const sec=(k,t)=>{const xs=A.filter(x=>x.s.k===k);if(!xs.length)return;L.push('',t+' ('+xs.length+'):');xs.forEach(({l,s})=>L.push('• '+l.name+' · lote '+(l.lote||'—')+' · vence '+showExp(l.exp)+' · '+l.qty+' und'+(l.loc?' · '+l.loc:'')+(k==='ya'?'':' · retirar el '+showT(s.t))))};
+  sec('ya','🔴 Retirar ya');sec('sem','🟠 Retirar esta semana');sec('mes','🟡 Retirar en los próximos 30 días');
+  if(L.length===1)L.push('','✔ Nada por retirar en los próximos 30 días.');
+  const t=L.join('\n');if(navigator.share){try{await navigator.share({title:'Vencimientos',text:t});return}catch(e){if(e&&e.name==='AbortError')return}}
+  window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');
+};
+
+/* ---------- Respaldo (para cambiar de teléfono) ---------- */
+$('#venBak').onclick=()=>{download(new Blob([JSON.stringify({app:'recepcionapp-vencimientos',v:1,fecha:new Date().toISOString(),data:V()})],{type:'application/json'}),'Respaldo vencimientos '+new Date().toISOString().slice(0,10)+'.json');say3('Guarda el archivo: con “♻ Restaurar” lo pasas a otro teléfono.')};
+$('#venRes').onclick=()=>$('#venResF').click();
+$('#venResF').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const o=JSON.parse(await f.text());if(!o||o.app!=='recepcionapp-vencimientos'||!o.data||!Array.isArray(o.data.lots))throw 0;
+    if(!confirm('Restaurar el respaldo del '+String(o.fecha||'').slice(0,10)+' ('+o.data.lots.filter(l=>!l.closed).length+' lotes activos). Reemplaza lo que tienes ahora en Vencidos. ¿Seguir?'))return;
+    db.ven=o.data;saveV();renderVen();say3('Respaldo restaurado.')}catch(x){alert('Ese archivo no es un respaldo de Vencidos.')}};
+
+/* ---------- Inicio ---------- */
+V();syncSchedule();checkDue(true);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){checkDue(true);if(!$('#secVen').classList.contains('hide')&&!$('#s1').classList.contains('hide'))renderVen()}});
+if(!$('#secVen').classList.contains('hide'))renderVen();
+window.__venc={parseExp,retiroT,stateOf,gs1,showT,showExp};
+})();
 </script>
 </body></html>

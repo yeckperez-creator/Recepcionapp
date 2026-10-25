@@ -1,6 +1,6 @@
 /* Recepción con escáner: funciona sin internet.
    Cambia VERSION cuando subas una versión nueva de la app. */
-const VERSION='recepcion-v8';
+const VERSION='recepcion-v9';
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 const LIBS = [
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
@@ -59,3 +59,31 @@ async function cacheFirst(r) {
   if (res && (res.ok || res.type === 'opaque')) c.put(r.url, res.clone());
   return res;
 }
+
+/* Aviso de vencidos aunque la app esté cerrada (Android con la app instalada; el teléfono decide cuándo) */
+function vencDB() { return new Promise((ok, ko) => { const r = indexedDB.open('recepcion-venc', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); }); }
+function kv(db, mode, fn) { return new Promise(ok => { const tx = db.transaction('kv', mode), st = tx.objectStore('kv'); let out; const q = fn(st); if (q) q.onsuccess = () => { out = q.result; }; tx.oncomplete = () => ok(out); tx.onerror = () => ok(undefined); }); }
+async function vencCheck(force) {
+  try {
+    const db = await vencDB(), sch = (await kv(db, 'readonly', st => st.get('sch'))) || [], last = await kv(db, 'readonly', st => st.get('last'));
+    const d = new Date(), today = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()), day = d.toDateString();
+    const due = sch.filter(x => x.t <= today);
+    if (!due.length || (last === day && !force)) return due.length;
+    await kv(db, 'readwrite', st => st.put(day, 'last'));
+    await self.registration.showNotification('Retirar por vencimiento', {
+      body: due.slice(0, 4).map(x => x.n + ' · lote ' + (x.lo || '—')).join('\n') + (due.length > 4 ? '\n… y ' + (due.length - 4) + ' más' : ''),
+      icon: 'icon-192.png', badge: 'icon-192.png', tag: 'vencidos'
+    });
+    return due.length;
+  } catch (e) { return -1; }
+}
+self.addEventListener('periodicsync', e => { if (e.tag === 'vencidos') e.waitUntil(vencCheck(false)); });
+self.addEventListener('message', e => { if (e.data === 'venc-check') e.waitUntil(vencCheck(true).then(n => e.source && e.source.postMessage({ venc: n }))); });
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil((async () => {
+    const cs = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of cs) { if ('focus' in c) return c.focus(); }
+    if (self.clients.openWindow) return self.clients.openWindow('./');
+  })());
+});
