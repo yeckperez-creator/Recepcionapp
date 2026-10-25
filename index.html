@@ -90,7 +90,8 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
 .lnq>*{flex:none}
 .lqn{width:64px!important;text-align:center;font-weight:700}
 .lqn.wq{border-color:var(--wr);background:var(--wrb)}
-.lpk{width:auto!important;padding:8px!important}
+.lpk{width:64px!important;padding:8px!important;text-align:center}
+.lpk.wq{border-color:var(--wr);background:var(--wrb)}
 .lu{font-weight:600}
 .rvimg{max-height:260px;overflow:auto;border-radius:8px;background:#000}
 .rvimg:empty{display:none}
@@ -150,7 +151,7 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
       <p class="h2">Nueva verificación</p>
       <label>Sube la hoja de Oracle (Direct Delivery Report)</label>
       <input type="file" id="fddr" accept="application/pdf,.pdf,image/*" multiple>
-      <p class="mu">Sirve el PDF escaneado, el PDF de Oracle o una foto. Si subes el reporte diario completo, la app busca las hojas de cada orden y las facturas de Pepsi que estén en el mismo archivo.</p>
+      <p class="mu">Sirve el PDF escaneado, el PDF de Oracle o una foto. Si subes el reporte diario completo, la app separa las hojas de cada orden y las facturas de todos los proveedores, y pone cada factura con su orden.</p>
     </div>
     <div class="card hide" id="vhist"><p class="h2">Órdenes verificadas</p><div id="vl"></div></div>
   </div>
@@ -185,12 +186,12 @@ video{width:100%;max-height:150px;object-fit:cover;border-radius:10px;background
     <p id="rvPoW" class="tbad" style="margin:6px 0 0"></p>
   </div>
   <div class="card">
-    <p class="mu" style="margin:0 0 8px">Compara con el papel. Las líneas en amarillo tienen dudas: revisa código, cajas y unidades por caja.</p>
+    <p class="mu" style="margin:0 0 8px">Compara con el papel. Las líneas en amarillo tienen dudas: revisa el producto, la cantidad y cuántas unidades trae cada una.</p>
     <div id="rvL"></div>
     <div class="row" style="margin-top:4px"><button id="rvAddH" class="sec">+ Producto de la hoja</button><button id="rvAdd" class="sec">+ Escribir código</button></div>
   </div>
   <div class="card totbox">
-    <div class="row tt"><b>Suma: <span id="rvSum">0</span> cajas</b><span class="mu">Total en factura</span><input type="number" id="rvTot" inputmode="numeric" placeholder="?" aria-label="TOTAL PRODUCTOS de la factura"></div>
+    <div class="row tt"><b>Suma de cantidades: <span id="rvSum">0</span></b><span class="mu">Total en factura</span><input type="number" id="rvTot" inputmode="numeric" placeholder="?" aria-label="TOTAL PRODUCTOS de la factura"></div>
     <div id="rvTotS" class="tts"></div>
     <div class="row" style="margin-top:8px"><button id="rvCancel" class="sec">Cancelar</button><button id="rvSave">Guardar factura</button></div>
   </div>
@@ -631,7 +632,7 @@ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.s
 loadDB();renderHome();
 </script>
 <script>
-/* Lectura de facturas en papel (Pepsi y formato similar).
+/* Lectura de facturas en papel: formato con columna Lote y lector general para cualquier proveedor.
    Usa Tesseract.js. Devuelve líneas {code, desc, cant, pack, flags}. */
 const FOCR = (() => {
   const TESS = {
@@ -666,7 +667,7 @@ const FOCR = (() => {
   function words(data) {
     (data.lines || []).forEach((l, i) => (l.words || []).forEach(w => { w._ln = i; }));
     return (data.words || []).filter(w => w.text && w.text.trim()).map(w => {
-      const b = w.bbox; return { text: w.text.trim(), conf: w.confidence, ln: w._ln, left: b.x0, top: b.y0, right: b.x1, bottom: b.y1,
+      const b = w.bbox, L = w.line && w.line.bbox; return { text: w.text.trim(), conf: w.confidence, ln: w._ln, lid: L ? L.y0 * 100000 + L.x0 : null, left: b.x0, top: b.y0, right: b.x1, bottom: b.y1,
         width: b.x1 - b.x0, height: b.y1 - b.y0, cx: (b.x0 + b.x1) / 2, cy: (b.y0 + b.y1) / 2 };
     });
   }
@@ -674,7 +675,7 @@ const FOCR = (() => {
 
   async function orient(src, w, prog, force) {
     if (force != null) return force;
-    const cands = src.width >= src.height ? [0, 180] : [270, 90];
+    const cands = projOrder(src);
     let best = null;
     for (const r of cands) {
       prog && prog('Detectando orientación…');
@@ -892,7 +893,7 @@ const FOCR = (() => {
     const ctrl = (full.match(/\b(\d{2})\s?-\s?(\d{7})\b/) || []).slice(1).join('-');
     const full2 = uniq.filter((p, k) => p.code && p.lote && out[k] && out[k].cant != null).length;
     const q = full2 + 0.5 * out.filter(l => l.code && l.code.length >= 5 && l.cant != null).length - out.filter(l => !l.code).length * 0.5;
-    return { rotation: rot, lines: out, total, po, num, ctrl, canvas: cv, pepsi: /pepsi/i.test(full), q, full: full2 };
+    return { rotation: rot, lines: out, total, po, num, ctrl, canvas: cv, text: full, q, full: full2 };
   }
   }
   /* ======== Hoja de Oracle escaneada o en foto ======== */
@@ -914,21 +915,22 @@ const FOCR = (() => {
     return [0, 90, 270, 180];
   }
   const DDRW = /Delivery|Report|Expected|Received|Damaged|Container|Printed|Signature|Description|Totals|Supplier/gi;
-  const FACW = /FACTURA|Orden|Compra|Descripci|Lote|Precio|Dscto|PRODUCTOS|Factura|Social/gi;
+  const FACW = /FACTURA|RECIBO|Orden|Compra|Descripci|Lote|Precio|Dscto|PRODUCTOS|Factura|Recibo|Social|Cantidad|\bCant\b|Subtotal|Sub-Total|Imponible|I\.?V\.?A|R\.?I\.?F|Pagar|Neto/gi;
   /* Clasifica una página: hoja de Oracle, factura u otra, y su giro */
-  async function classify(src, prog) {
+  async function classify(src, prog, size) {
     const w = await getWorker(prog); await resetParams(w);
     let best = null;
     for (const r of projOrder(src)) {
-      const c = rotCanvas(src, r, 1300), { data } = await w.recognize(c), ws = words(data), txt = data.text || '';
+      const c = rotCanvas(src, r, size || 1300), { data } = await w.recognize(c), ws = words(data), txt = data.text || '';
       const good = ws.filter(x => x.conf > 60 && /[A-Za-z]{3,}|\d{4,}/.test(x.text)).length;
       const ddr = (txt.match(DDRW) || []).length, fac = (txt.match(FACW) || []).length, sc = good + 3 * (ddr + fac);
       if (!best || sc > best.sc) best = { rot: r, sc, ddr, fac, txt, good };
       if (good >= 20 && (ddr >= 3 || fac >= 3)) break;
     }
     const b = best, m = b.txt.match(/PO\s*Number\W{0,4}([0-9OoIl|“”‘’'*]{7,10})/i) || b.txt.match(/Orden\s*Compra\W{0,4}([0-9OoIl|]{7,10})/i);
-    const pepsi = /pepsi/i.test(b.txt);
-    return { rot: b.rot, type: b.ddr >= 3 && b.ddr >= b.fac ? 'ddr' : ((b.fac >= 3 || (b.fac >= 1 && pepsi) || /FACTURA/.test(b.txt)) ? 'fac' : 'otro'), po: m ? fixNum(m[1]) : '', pepsi };
+    const type = /Reporte\s*Diario|Unidades\s*Recibidas/i.test(b.txt) ? 'resumen' : (b.ddr >= 3 && b.ddr >= b.fac ? 'ddr' : ((b.fac >= 3 || (b.fac >= 2 && b.ddr < 2) || /FACTURA|RECIBO/i.test(b.txt)) ? 'fac' : 'otro'));
+    // formato con columna Lote (lector especial); las demás facturas usan el lector general
+    return { rot: b.rot, type, po: m ? fixNum(m[1]) : (genericPO(b.txt) || ''), lote: /\bLote\b/i.test(b.txt), txt: b.txt };
   }
   function cropScaled(src, x0, y0, x1, y1, targetW) {
     const w = x1 - x0, h = y1 - y0, s = targetW / w, c = document.createElement('canvas');
@@ -943,11 +945,11 @@ const FOCR = (() => {
     const halves = two ? [[0, cv.width / 2], [cv.width / 2, cv.width]] : [[0, cv.width]];
     const out = []; let hdr = opts.header || null;
     for (let k = 0; k < halves.length; k++) {
-      const [a, b] = halves[k], pg = cropScaled(cv, a, 0, b, cv.height, 2000);
+      const [a, b] = halves[k], pg = cropScaled(cv, a, 0, b, cv.height, two ? 2000 : 3000);
       prog('Leyendo la hoja' + (two ? ' (' + (k + 1) + ' de 2)' : '') + '…');
       await resetParams(w);
       const { data } = await w.recognize(pg);
-      const res = await parseDDRPage(w, pg, words(data), hdr, prog);
+      const res = await parseDDRPage(w, pg, words(data), hdr, prog, !two);
       if (res.hdr) hdr = res.hdr;
       res.canvas = pg; out.push(res);
     }
@@ -961,18 +963,21 @@ const FOCR = (() => {
     const { data } = await w.recognize(c);
     return words(data).filter(o => /^\d+$/.test(o.text)).map(o => ({ v: o.text, conf: o.conf, y: Y0 + (o.cy - 25) / S, h: o.height / S }));
   }
-  async function parseDDRPage(w, pg, ws, prevHdr, prog) {
+  async function parseDDRPage(w, pg, ws, prevHdr, prog, crisp) {
     const W = pg.width, H = pg.height, find = re => ws.filter(o => re.test(o.text));
     const byLn = {}; ws.forEach(o => { if (o.ln != null) (byLn[o.ln] = byLn[o.ln] || []).push(o); });
     const sl = Object.values(byLn).filter(l => l.length >= 3).map(l => { l.sort((a, b) => a.cx - b.cx); const a = l[0], b = l[l.length - 1]; return (b.cx - a.cx) > W * 0.3 ? (b.cy - a.cy) / (b.cx - a.cx) : null; }).filter(x => x != null);
     const skew = sl.length >= 2 ? median(sl) : 0, dyf = o => o.cy - skew * o.cx;
     let hdr = null;
     for (const e of find(/^Expect/i)) {
-      const r = ws.find(o => /^Receiv/i.test(o.text) && Math.abs(o.cy - e.cy) < e.height * 0.9 && o.cx > e.cx); if (!r) continue;
       const line = ws.filter(o => Math.abs(o.cy - e.cy) < e.height * 0.9), g = re => line.find(o => re.test(o.text));
+      // "Received" a veces no se lee: se acepta parecido o se deduce entre Expected y Damaged
+      let r = line.find(o => o.cx > e.cx && /^Receiv/i.test(o.text)) || line.find(o => o.cx > e.cx && o.cx < e.cx + W * 0.25 && lev(o.text.toLowerCase().replace(/[^a-z]/g, ''), 'received') <= 3);
+      if (!r) { const dm0 = g(/^Dama/i), pk0 = g(/^Pack/i), cx = dm0 ? (e.cx + dm0.cx) / 2 : (pk0 ? e.cx + (e.cx - pk0.cx) : null); if (cx == null) continue;
+        r = { cx, left: e.left + (cx - e.cx), right: e.right + (cx - e.cx), cy: e.cy, height: e.height, text: 'Received' }; }
       const it = g(/^It[eo]m$/i), ds = g(/^Desc/i), um = g(/^U[O0D]?[MNV]$/i), pk = g(/^Pack/i), sz = g(/^Size/i), dm = g(/^Damag/i), cw = r.cx - e.cx;
       const cwl = r.left - e.left;
-      hdr = { y: e.cy, h: e.height, itemL: it ? it.left : W * 0.06, descL: ds ? ds.left : (it ? it.right + W * 0.05 : W * 0.2),
+      hdr = { W, y: e.cy, h: e.height, itemL: it ? it.left : W * 0.06, descL: ds ? ds.left : (it ? it.right + W * 0.05 : W * 0.2),
         uom: um ? um.cx : null, pack: pk ? (pk.left + (sz || pk).right) / 2 : null, exp: e.cx, rec: r.cx, dmg: dm ? dm.cx : r.cx + cw,
         uomL: um ? um.left : null, packL: pk ? pk.left : e.left - cwl, expL: e.left, recL: r.left, dmgL: dm ? dm.left : r.left + cwl };
       if (!hdr.pack) hdr.pack = e.cx - cw; if (!hdr.uom) hdr.uom = hdr.pack - cw; if (hdr.uomL == null) hdr.uomL = hdr.packL - cwl;
@@ -982,11 +987,13 @@ const FOCR = (() => {
     const isEA = o => /^[=SE5€][A4]$/i.test(o.text);
     if (!hdr && prevHdr) {
       hdr = { ...prevHdr, y: -1 };
+      if (prevHdr.W && prevHdr.W !== W) { const s = W / prevHdr.W; for (const k of ['itemL', 'descL', 'uom', 'pack', 'exp', 'rec', 'dmg', 'uomL', 'packL', 'expL', 'recL', 'dmgL']) hdr[k] *= s; hdr.h *= s; hdr.W = W; }
       const eas = ws.filter(o => isEA(o) && Math.abs(o.cx - prevHdr.uom) < W * 0.08);
       if (eas.length >= 2) { const dx = median(eas.map(o => o.cx)) - prevHdr.uom; for (const k of ['itemL', 'descL', 'uom', 'pack', 'exp', 'rec', 'dmg', 'uomL', 'packL', 'expL', 'recL', 'dmgL']) hdr[k] += dx; }
     }
     const meta = ddrMeta(ws, W);
     if (meta.po.length !== 8) { const num = ws.find(o => /^Number:?$/i.test(o.text)); if (num) { await w.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '7' }); const t = ((await w.recognize(grayCell(pg, num.right + 4, num.top - num.height * 0.5, num.right + W * 0.3, num.bottom + num.height * 0.5, 2))).data.text || '').replace(/\D/g, ''); if (t.length === 8 || (t.length >= 7 && meta.po.length < 7)) meta.po = t; await resetParams(w); } }
+    if (meta.po.length !== 8) { const c = ws.filter(o => o.cy < (hdr ? hdr.y : H * 0.4) && /^\W?3[0-9OoIl]{7}\W*$/.test(o.text)).map(o => fixNum(o.text)).find(t => t.length === 8); if (c) meta.po = c; }
     if (!hdr) return { rows: [], hdr: null, ...meta, totals: null };
     const cw = hdr.rec - hdr.exp;
     const tot = ws.find(o => /^Totals?$/i.test(o.text) && o.cx < hdr.exp);
@@ -1007,7 +1014,7 @@ const FOCR = (() => {
     // valores por columna: palabras del OCR general (una marca delante de una cifra es un 1 tenue)
     const cwl = hdr.recL - hdr.expL;
     const colX = { pack: [hdr.packL - cwl * 0.12, hdr.expL - cwl * 0.1], exp: [hdr.expL - cwl * 0.12, hdr.recL - cwl * 0.1], rec: [hdr.recL - cwl * 0.12, hdr.dmgL - cwl * 0.1], dmg: [hdr.dmgL - cwl * 0.12, hdr.dmgL + cwl * 0.8] };
-    const numTok = t => { t = String(t).trim(); if (/^[^0-9]\d/.test(t)) t = '1' + t.slice(1); t = t.replace(/[Oo]/g, '0').replace(/[lI|!]/g, '1'); return /^\d{1,4}$/.test(t) ? t : (/^\d{1,4}[^0-9]$/.test(t) ? t.slice(0, -1) : ''); };
+    const numTok = t => { t = String(t).trim(); if (crisp) t = t.replace(/^[|\[\](){}!]+|[|\[\](){}!]+$/g, ''); if (/^[^0-9]\d/.test(t)) t = '1' + t.slice(1); t = t.replace(/[Oo]/g, '0').replace(/[lI|!]/g, '1'); return /^\d{1,4}$/.test(t) ? t : (/^\d{1,4}[^0-9]$/.test(t) ? t.slice(0, -1) : ''); };
     const vals = {};
     for (const k of ['pack', 'exp', 'rec', 'dmg']) {
       vals[k] = [];
@@ -1073,6 +1080,200 @@ const FOCR = (() => {
       date: dw.map(o => o.text).join('').replace(/[^0-9\/]/g, '').replace(/^0\//, '10/'), cont: cw2.map(o => fixNum(o.text)).join('').slice(0, 7) };
   }
 
+  /* ======== Factura de cualquier proveedor: tabla guiada por sus encabezados ======== */
+  const H_COD = /^c[oó0]d(igo|ig[oó0])?\.?:?$/i, H_DESC = /^(descrip|denominaci|producto|art[ií]culo|concepto|detalle)/i,
+    H_QTY = /^(cant(idad)?\.?|pz\.?|piezas|bultos|cajas)$/i, H_SEQ = /^(sec\.?|n[°º]\.?|#|reng\.?|l[ií]n\.?)$/i;
+  const STOP = /^(sub-?total|subtotal|total(es)?|base|observaci|moneda|son:?|bonificaci|descuento:?|i\.?v\.?a\.?:?|exento)$/i;
+  const STOPL = /^\W*(sub-?\s?total|total\b|base\s+imp|el\s+pago|son:|observaci|moneda|bonificaci|exento|nota:|cantidad\s+de\s+art)/i;
+  const HKW = /^(sec|art[ií]culo|descrip|cant|pv|dcto|desc\.|monto|valor|precio|total|neto|c[oó0]d|unid|iva|bs|usd|lote|%)/i;
+  const UNIT = /^(dsp|ea|und|unid|un|pqte|paq|pq|cj|caja|cajas|bul|bulto|pza|pz|kg|lt|bot|fdo|display)\.?$/i;
+  const USUF = /^(.{1,3}?)\s*([D0O][S58$][PF]|[S5]P|DSP|EA|E4|UND|UN|PQTE|P[O0]TE|PTTE|CJ|BUL)$/i;
+  const qDig = t => String(t).replace(/[Oo]/g, '0').replace(/[Il|!]/g, '1').replace(/S/g, '5').replace(/B/g, '8').replace(/G/g, '6').replace(/Z/g, '2');
+  /* Cantidad dentro de una palabra: "12", "3,00", "6EA", "3DSP" (el lector suele ver "10SP" por "1 DSP"). strong = trae la unidad pegada */
+  const UV = /^([D0O][S58$][PF]|DSP|[S5]P|E[A4]|UND|UN|PQTE|P[O0T]TE|CJ|BUL|PZA?)$/i;
+  function qtyParse(t, next) {
+    t = String(t || '').trim();
+    let m = t.match(/^(.{1,4}?)(DSP|[D0O][S58$][PF]|E[A4])$/i) || t.match(/^(\d{1,4})(UND|UN|PQTE|P[O0T]TE|CJ|BUL|PZA?)$/i);
+    if (m) { const d = qDig(m[1].replace(/[^\w]/g, '')); if (/^[1-9]\d{0,3}$/.test(d)) return { v: +d, um: normUnit(m[2]), strong: true }; }
+    m = t.match(/^[^\dA-Za-z]{0,1}(\d{1,4})(?:[,.]0{1,3})?[^\dA-Za-z]{0,2}$/);
+    if (m && +m[1] >= 1) { const nu = next && UV.test(String(next).replace(/\W/g, '')) ? normUnit(next) : ''; return { v: +m[1], um: nu, strong: !!nu }; }
+    return null;
+  }
+  const normUnit = u => { u = String(u || '').toUpperCase().replace(/\W/g, ''); return /^[D0O][S58$][PF]$|^[S5]P$|^DSP$/.test(u) ? 'DSP' : (/^E[A4]$/.test(u) ? 'EA' : (/^P[O0T]TE$/.test(u) ? 'PQTE' : u)); };
+  /* Deja solo la tinta oscura: fondos de color, marcas de agua y sellos de color se vuelven blancos */
+  function inkCanvas(src) {
+    const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+    const g = c.getContext('2d'); g.drawImage(src, 0, 0);
+    const id = g.getImageData(0, 0, c.width, c.height), d = id.data, n = d.length / 4, V = new Uint8Array(n), hist = new Uint32Array(256);
+    for (let i = 0; i < n; i++) { const v = Math.max(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]); V[i] = v; hist[v]++; }
+    let acc = 0, lo = 0, hi = 255; for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc > n * 0.01) { lo = v; break; } }
+    acc = 0; for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc > n * 0.35) { hi = v; break; } }
+    const k = 255 / Math.max(30, hi - lo);
+    const lut = new Uint8Array(256); for (let v = 0; v < 256; v++) { const x = Math.max(0, Math.min(1, (v - lo) * k / 255)); lut[v] = Math.round(255 * Math.pow(x, 1.6)); }
+    for (let i = 0; i < n; i++) { const v = lut[V[i]]; d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; }
+    g.putImageData(id, 0, 0); return c;
+  }
+  /* Como rotCanvas, pero puede ampliar (las facturas térmicas tienen letra pequeña) */
+  function rotCanvasUp(src, deg, size) {
+    const s = Math.min(1.7, size / Math.max(src.width, src.height));
+    if (s <= 1) return rotCanvas(src, deg, size);
+    const t = document.createElement('canvas'); t.width = Math.round(src.width * s); t.height = Math.round(src.height * s);
+    const g = t.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, 0, 0, t.width, t.height);
+    return rotCanvas(t, deg, Math.max(t.width, t.height));
+  }
+  /* Montos: "6.275,72", "7,476.34", "27396.72" (siempre con dos decimales) */
+  function money(t) { const s = String(t || '').replace(/[^\d.,]/g, ''), m = s.match(/^(\d{1,3}(?:[.,]\d{3})+|\d+)[.,](\d{2})$/); return m ? +(m[1].replace(/[.,]/g, '') + '.' + m[2]) : null; }
+  /* Cantidades enteras que explican dos montos de la línea (total = precio × cantidad) */
+  function moneyQty(ms) {
+    // los porcentajes (6,00 · 16,00) no son precios
+    const out = new Set(), v = [...new Set(ms)].filter(x => x >= 1).sort((a, b) => a - b), price = x => !(x <= 100 && Math.round(x) === x);
+    for (let i = 0; i < v.length; i++) if (price(v[i])) for (let j = i + 1; j < v.length; j++) { const q = Math.round(v[j] / v[i]); if (q >= 2 && q <= 999 && Math.abs(v[j] - q * v[i]) <= 0.006 * q + 0.02) out.add(q); }
+    if (!out.size && v.length >= 2 && ms.filter(x => x === v[v.length - 1]).length >= 2) out.add(1);
+    return [...out];
+  }
+  const isNumTok = t => /^[^\dA-Za-z]{0,1}\d{1,6}[^\dA-Za-z]{0,1}$/.test(t);
+  async function readGeneric(src, opts = {}) {
+    const prog = opts.progress || (() => {}), w = await getWorker(prog);
+    await resetParams(w);
+    const rot = await orient(src, w, prog, opts.rotation);
+    const nat = Math.max(src.width, src.height), sizes = [...new Set([2600, 3400, 2200])].filter(x => x <= nat * 1.7);
+    let best = null;
+    for (const size of sizes) {
+      const r = await genericAt(size);
+      if (r && (!best || r.q > best.q)) best = r;
+      if (best && best.lines.length && best.full === best.lines.length && best.sure >= best.lines.length * 0.8) break;
+      prog('Mejorando la lectura…');
+    }
+    await resetParams(w);
+    return best || { rotation: rot, lines: [], total: null, po: '', num: '', canvas: rotCanvas(src, rot, 2600), q: -1, full: 0, generic: true, text: '' };
+    async function genericAt(size) {
+      await resetParams(w);
+      const cv = inkCanvas(rotCanvasUp(src, rot, size)), W = cv.width;
+      prog('Leyendo la factura…');
+      const { data } = await w.recognize(cv);
+      const ws = words(data), full = data.text || '';
+      const byLn = {}; ws.forEach(o => { if (o.lid != null) (byLn[o.lid] = byLn[o.lid] || []).push(o); });
+      const sl = Object.values(byLn).filter(l => l.length >= 3).map(l => { l.sort((a, b) => a.cx - b.cx); const a = l[0], b = l[l.length - 1]; return (b.cx - a.cx) > W * 0.3 ? (b.cy - a.cy) / (b.cx - a.cx) : null; }).filter(x => x != null);
+      const skew = sl.length >= 2 ? median(sl) : 0, dy = o => o.cy - skew * o.cx;
+      const po = genericPO(full), num = invNumber(full);
+      const clean = t => t.replace(/[^\wñÑáéíóúÁÉÍÓÚ.#°º%]/g, '');
+      // encabezado: la palabra de descripción con la de cantidad u otras de columna cerca (pueden ser dos renglones)
+      let hdr = null;
+      for (const ds of ws.filter(o => H_DESC.test(clean(o.text)))) {
+        const hd = Math.max(ds.height, 12), near = ws.filter(o => Math.abs(dy(o) - dy(ds)) < hd * 2.2);
+        const lns = new Set(near.filter(o => o === ds || H_QTY.test(clean(o.text)) || HKW.test(clean(o.text))).map(o => o.lid).filter(x => x != null));
+        const band = near.filter(o => (lns.has(o.lid) || o === ds) && !isNumTok(o.text) && !/^\d[\d.,]*$/.test(o.text));
+        const q = band.filter(o => o.left > ds.right - 2 && H_QTY.test(clean(o.text))).sort((a, b) => a.left - b.left)[0] || null;
+        const nk = band.filter(o => o !== ds && HKW.test(clean(o.text))).length;
+        if (!q && nk < 2) continue;
+        const cd = band.find(o => H_COD.test(clean(o.text)) && o.right < ds.left + ds.width), sq = band.find(o => H_SEQ.test(clean(o.text)) && o.right < ds.left + ds.width);
+        const sc = (q ? 3 : 0) + (cd ? 1 : 0) + Math.min(nk, 6) * 0.3;
+        if (!hdr || sc > hdr.sc + 0.01 || (Math.abs(sc - hdr.sc) < 0.01 && ds.cy < hdr.ds.cy)) hdr = { q, ds, cd, sq, band, sc };
+      }
+      if (!hdr) return null;
+      const { ds, cd, sq, band } = hdr, h = median(band.map(o => o.height)) || 20;
+      // columnas: palabras del encabezado agrupadas por su franja horizontal
+      const cols = [];
+      for (const o of [...band].sort((a, b) => a.left - b.left)) { const c = cols.find(c => o.left < c.r - 2 && o.right > c.l + 2); if (c) { c.l = Math.min(c.l, o.left); c.r = Math.max(c.r, o.right); c.ws.push(o); } else cols.push({ l: o.left, r: o.right, ws: [o] }); }
+      cols.sort((a, b) => a.l - b.l);
+      const di = cols.findIndex(c => c.ws.includes(ds));
+      const colX = k => [k > 0 ? (cols[k - 1].r + cols[k].l) / 2 : cols[k].l - (cols[k].r - cols[k].l), k < cols.length - 1 ? (cols[k].r + cols[k + 1].l) / 2 : cols[k].r + (cols[k].r - cols[k].l)];
+      const y0 = Math.max(...band.map(dy)) + h * 0.55;
+      const below = ws.filter(o => dy(o) > y0).sort((a, b) => dy(a) - dy(b)), all = [];
+      for (const o of below) { const L = all[all.length - 1]; if (L && Math.abs(dy(o) - L.y) < h * 0.5) { L.ws.push(o); L.y = (L.y * (L.ws.length - 1) + dy(o)) / L.ws.length; } else all.push({ y: dy(o), ws: [o] }); }
+      all.forEach(L => L.ws.sort((a, b) => a.left - b.left));
+      const dEnd = cols[di + 1] ? cols[di + 1].l : W;
+      let cut = all.findIndex(L => { const t = L.ws.filter(o => o.left < dEnd); return t.length && (STOP.test(clean(t[0].text)) || STOPL.test(t.map(o => o.text).join(' '))); });
+      const lines = cut < 0 ? all : all.slice(0, cut);
+      // columna de cantidad: la del encabezado o, si no se leyó, la primera a la derecha de la descripción con cantidades
+      let qi = hdr.q ? cols.findIndex(c => c.ws.includes(hdr.q)) : -1;
+      if (qi < 0) for (let k = di + 1; k < cols.length; k++) { const [a, b] = colX(k); const n = lines.filter(L => L.ws.some((o, j) => o.cx > a && o.cx < b && qtyParse(o.text, (L.ws[j + 1] || {}).text))).length; if (n >= Math.max(2, lines.length * 0.3)) { qi = k; break; } }
+      if (qi < 0) return null;
+      const [qx0, qx1] = colX(qi), dRight = Math.min(colX(di)[1], qx0);
+      const rows = [];
+      for (const L of lines) {
+        const t = L.ws, inQ = t.filter(o => o.cx > qx0 && o.cx < qx1);
+        let qp = null, qconf = 0;
+        const cands = inQ.map((o, k) => { let p = qtyParse(o.text, (inQ[k + 1] || {}).text); if (!p && inQ[k + 1] && UV.test(inQ[k + 1].text.replace(/\W/g, ''))) { const d = qDig(o.text.replace(/\W/g, '')); if (/^[1-9]\d{0,2}$/.test(d)) p = { v: +d, um: normUnit(inQ[k + 1].text), strong: true }; } return p ? { p, o } : null; }).filter(Boolean);
+        const pick = cands.find(c => c.p.strong) || cands[cands.length - 1];
+        if (pick) { qp = pick.p; qconf = pick.o.conf; }
+        const left = t.filter(o => o.cx < dRight && !inQ.includes(o));
+        let lead = null;
+        if (left.length >= 2 && isNumTok(left[0].text) && /[A-Za-z]{2,}/.test(left.slice(1).map(o => o.text).join(''))) lead = left[0];
+        const desc = left.filter(o => o !== lead).map(o => o.text).join(' ').replace(/[|_“”‘’~•*·«»]/g, ' ').replace(/^[^A-Za-z0-9]+/, '').replace(/(\s+[-—=>+~:.]+)+\s*$/, '').replace(/\s+/g, ' ').trim();
+        rows.push({ y: L.y, lead, desc, qty: qp ? qp.v : null, um: qp ? qp.um : '', strong: !!(qp && qp.strong), qconf, letters: (desc.match(/[A-Za-z]/g) || []).length, nums: t.some(o => o.cx > qx0 && /\d/.test(o.text)), money: t.filter(o => o.cx > qx0).map(o => money(o.text)).filter(x => x != null) });
+      }
+      // juntar: cantidad impresa un poco más abajo, descripción en dos renglones
+      const items = [];
+      for (const r of rows) {
+        const prev = items[items.length - 1];
+        if (r.letters >= 2 && (r.lead || r.qty != null || r.nums || !prev)) { items.push({ ...r }); continue; }
+        if (r.letters < 2 && r.qty != null) { const tgt = items.filter(x => x.qty == null && Math.abs(x.y - r.y) < h * 1.3).sort((a, b) => Math.abs(a.y - r.y) - Math.abs(b.y - r.y))[0]; if (tgt) Object.assign(tgt, { qty: r.qty, qconf: r.qconf, um: tgt.um || r.um, money: [...tgt.money, ...r.money] }); continue; }
+        if (r.letters >= 2 && prev && r.y - prev.y < h * 2.2) prev.desc = (prev.desc + ' ' + r.desc).trim();
+      }
+      if (items.length > 2) { const gaps = items.slice(1).map((r, i) => r.y - items[i].y), pit = median(gaps); for (let i = 0; i < gaps.length; i++) if (gaps[i] > pit * 3.5 && gaps[i] > h * 5) { items.length = i + 1; break; } }
+      if (!items.length) return null;
+      const pitch = items.length > 1 ? median(items.slice(1).map((r, i) => r.y - items[i].y)) : h * 1.6;
+      // segunda lectura solo con dígitos de la columna de cantidad y de la de códigos: si no coincide, queda en amarillo
+      const unitCol = items.filter(r => r.strong).length > items.length * 0.4;
+      if (unitCol) items.forEach(r => { if (r.qty != null && !r.strong) { r.qty = null; r.qconf = 0; } });
+      const strip = async (x0, x1) => {
+        const ys = items.map(r => r.y + skew * (x0 + x1) / 2), Y0 = Math.min(...ys) - h, Y1 = Math.max(...ys) + h, S = 2;
+        await w.setParameters({ tessedit_char_whitelist: '0123456789', tessedit_pageseg_mode: '6' });
+        const r = (await w.recognize(cellCanvas(cv, x0, Y0, x1, Y1, S))).data;
+        return words(r).filter(o => /^\d{1,8}$/.test(o.text)).map(o => ({ v: o.text, conf: o.conf, y: Y0 + (o.cy - 25) / S - skew * (x0 + x1) / 2 }));
+      };
+      const near = (list, y) => { let b = null, bd = pitch * 0.45; for (const n of list) { const d = Math.abs(n.y - y); if (d < bd) { bd = d; b = n; } } return b; };
+      const qs = unitCol ? [] : await strip(qx0, qx1);
+      const leadsAll = items.filter(r => r.lead);
+      const isCodeCol = leadsAll.length >= items.length * 0.5;
+      const cs = isCodeCol ? await strip(Math.min(...leadsAll.map(r => r.lead.left)) - h * 0.4, Math.max(...leadsAll.map(r => r.lead.right)) + h * 0.4) : [];
+      await resetParams(w);
+      const leads = items.map(r => r.lead ? parseInt(fixDigits(r.lead.text), 10) : null), nl = leads.filter(v => v != null).length;
+      const isSeq = !cd && (!!sq || (nl >= 3 && leads.filter((v, i) => v != null && v === i + 1).length >= nl * 0.6));
+      const out = [];
+      let sure = 0;
+      for (const r of items) {
+        let t = r.qty, conf = r.qconf;
+        // precio × cantidad = total: si los montos de la línea dan una cantidad exacta, esa manda
+        const mq = moneyQty(r.money);
+        const s2 = near(qs, r.y);
+        if (s2 && +s2.v >= 1 && +s2.v <= 9999) { if (t == null) { t = +s2.v; conf = Math.min(70, s2.conf); } else if (+s2.v === t) conf = Math.max(conf, s2.conf, 80); else { if (s2.conf > conf + 10) t = +s2.v; conf = Math.min(conf, 45); } }
+        if (mq.length === 1 || (mq.length > 1 && t != null && mq.includes(t))) { const q = mq.length === 1 ? mq[0] : t; if (q === t) conf = Math.max(conf, 90); else { t = q; conf = 85; } }
+        if (t == null) {
+          const yc = r.y + skew * (qx0 + qx1) / 2, cell = grayCell(cv, qx0, yc - h * 0.85, qx1, yc + h * 0.85, 2);
+          await w.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: '7' });
+          const rr = (await w.recognize(cell)).data, tk = (rr.text || '').trim().split(/\s+/);
+          const ps = tk.map((x, k) => qtyParse(x, tk[k + 1])).filter(Boolean), p = ps.find(x => x.strong) || (unitCol ? qtyParse(tk.join('')) : ps[0]);
+          if (p) { t = p.v; conf = Math.min(50, rr.confidence * 0.7); if (!r.um) r.um = p.um; }
+          await resetParams(w);
+        }
+        let code = r.lead && !isSeq && isCodeCol ? fixDigits(r.lead.text) : '', codeConf = r.lead ? r.lead.conf : 0;
+        if (code && cs.length) { const c2 = near(cs, r.y); if (c2) { if (c2.v === code) codeConf = Math.max(codeConf, c2.conf, 80); else if (c2.conf > codeConf) { code = c2.v; codeConf = Math.min(c2.conf, 60); } else codeConf = Math.min(codeConf, 55); } }
+        if (t != null && conf >= 70) sure++;
+        out.push({ code, codeRaw: r.lead ? r.lead.text : '', codeConf, desc: r.desc, cant: t, cantConf: conf, pack: null, um: r.um, y: r.y });
+      }
+      // total de unidades impreso (si existe), en la columna de cantidad
+      let total = null;
+      for (const o of ws.filter(o => /^total/i.test(clean(o.text)) && dy(o) > y0)) {
+        const tk = ws.filter(p => Math.abs(dy(p) - dy(o)) < h * 0.8 && p.cx > qx0 - (qx1 - qx0) * 0.3 && p.cx < qx1 + (qx1 - qx0) * 0.3).map(p => p.text.match(/^\d{1,4}$/)).filter(Boolean)[0];
+        if (tk) { total = +tk[0]; break; }
+      }
+      const fullN = out.filter(l => l.desc && l.cant != null).length;
+      return { rotation: rot, lines: out, total, po, num, ctrl: '', canvas: cv, q: fullN + sure * 0.3 - out.filter(l => l.cant == null).length * 0.5 + (total != null && total === out.reduce((a, l) => a + (l.cant || 0), 0) ? 2 : 0), full: fullN, sure, generic: true, text: full };
+    }
+  }
+  /* Número de orden de compra (Farmatodo: 8 dígitos) con las etiquetas más comunes */
+  function genericPO(t) {
+    const m = String(t || '').match(/(?:Orden\s*(?:de\s*)?Compras?(?:\s*N[°ºo.]*)?|ORD(?:EN)?|O\/C|N[°º]?\s*OC|PEDIDO\s*N?[°º]?)\s*[:;.#]?\s*([0-9OoIl|]{7,9})/i);
+    return m ? fixDigits(m[1]) : '';
+  }
+  function invNumber(t) {
+    t = String(t || '');
+    const m = t.match(/(?:FACTURA|RECIBO)\s*(?:GU[IÍ]A\s*)?(?:N[°ºo.]*|Nro\.?)?\s*[:."]?\s*([A-Z]{0,4}\d[\d-]{4,19})/i) || t.match(/\bN[°ºz]\s*:?\s*(\d{2}[A-Z]{2}\d{6,10})/);
+    return m ? m[1].replace(/-+$/, '') : '';
+  }
+
   function lev(a, b) {
     const m = a.length, n = b.length, d = Array.from({ length: m + 1 }, (_, i) => [i]);
     for (let j = 1; j <= n; j++) d[0][j] = j;
@@ -1101,7 +1302,8 @@ const FOCR = (() => {
     if (best && (best.d <= 1 || (best.d <= 2 && best.ds >= 0.34) || best.ds >= 0.6)) return { code: best.code, how: 'corregido' };
     return null;
   }
-  return { read, getWorker, packFromDesc, matchCode, descSim, lev, classify, readDDR, fixNum };
+  async function text(src, rot, size) { const w = await getWorker(); await resetParams(w); return ((await w.recognize(rotCanvas(src, rot || 0, size || 2400))).data.text || ''); }
+  return { read, readGeneric, genericPO, getWorker, text, packFromDesc, matchCode, descSim, lev, classify, readDDR, fixNum };
 })();
 
 /* ======================= VERIFICAR FACTURAS ======================= */
@@ -1110,8 +1312,9 @@ function loadScript(u){return new Promise((ok,ko)=>{const ex=document.querySelec
 async function pdfLib(){if(!window.pdfjsLib){await loadScript(PDFJS);pdfjsLib.GlobalWorkerOptions.workerSrc=PDFW}return pdfjsLib}
 async function ocrLib(){if(!window.Tesseract)await loadScript(TESSJS)}
 
-/* Equivalencias código del proveedor -> ítem Farmatodo [ítem, unidades por caja, descripción del proveedor].
-   Armadas con las facturas y hojas de Pepsi del 08-10-2026. Las que empareje el usuario se guardan aparte. */
+/* Equivalencias de cada proveedor: código de la factura (o "d:" + descripción si la factura no trae código)
+   -> [ítem Farmatodo, unidades que trae cada unidad facturada, descripción en la factura].
+   Armadas con las facturas y hojas reales de la tienda; las que empareje el usuario se guardan aparte y mandan. */
 const SEED_EQ={'1511':{
 '80624':['111017440',24,'PEPSI LATA 355X24U'],'80625':['111017434',24,'PEPSI LIG LAT355X24U'],'80626':['111011208',6,'PEPSI PET 2LX6U'],
 '80628':['111017479',6,'PEPSI LIGH PET 2LX6U'],'80646':['111017442',24,'GOLD KOLA LAT355X24U'],'80648':['111017646',24,'MANZANA LATA 355 ML'],
@@ -1126,10 +1329,106 @@ const SEED_EQ={'1511':{
 '1017051':['112997351',6,'PEPSI PET 1LX6U'],'1017221':['113529390',6,'GOLD KOLA PET1LX6U'],'1017231':['113531385',6,'GOLD MANZ PET 2LX6U'],
 '1017371':['114364401',6,'7UP PET 1LX6U'],'1017751':['115247492',24,'MIN SPRK SODA LAT355X24U'],'1017985':['115735496',6,'PEPSI ZERO PET1L 6U'],
 '1018081':['115975537',6,'GOLD PIÑA PET2L 6U'],'1018111':['115943771',6,'PEPSI ZERO PET 2L 6U'],'1018131':['116073519',24,'ROCKSTAR LAT355 24U'],
-'1018182':['116298566',6,'YUK NARA S/A PET1,5X6U'],'1018183':['116338556',6,'YUK MZNA S/A PET1,5X6U']}};
+'1018182':['116298566',6,'YUK NARA S/A PET1,5X6U'],'1018183':['116338556',6,'YUK MZNA S/A PET1,5X6U']},
+'12340':{'1055':['111317055',16,'COCA COLA 355ML PET'],'5633':['113802392',16,'CHINOTTO S/CAL PET 355ML'],'222':['111957960',6,'COCA COLA PET 2LT 6S/GAV'],
+'5687':['111017447',12,'COCACOLA LAT355CC 12U'],'202':['111355888',16,'AGUA NEVADA 355ML 16UN'],'250':['111240618',6,'AGUA NEVADA 1,5LT 06UN'],
+'6820':['111240637',2,'AGUA NEVADA 5LTS 1/2CAJA'],'221':['111240617',16,'AGUA NEVADA 600ML 16UN'],'224':['111964629',6,'COCA COLA PET 1,5LT 6UN'],
+'94':['113856391',12,'DVLL CITRICAS PET 500ML'],'6638':['111918357',6,'COCA COLA SIN AZUCAR 2L'],'6644':['113580451',16,'COCA COLA S AZUCAR P355'],
+'223':['111957695',6,'COCA COLA ORIG PET 1LTX6'],'6642':['113525381',12,'COCA COLA S AZUCAR L355'],'2300':['115961522',6,'FANTA NARANJA PET 2L'],
+'5632':['111228518',6,'CHINOTTO S/CAL 2L']},
+'13161':{'0802':['114038402',1,'BPnMulticereal (E)'],'1114':['111022046',1,'BPnBlanco500g (E)'],'3167':['111286137',1,'BPnHamburgue630 (E)'],
+'506197':['115424735',1,'BPnCeroInt500g (E)'],'1072':['115069420',1,'HPnBlanco420 (E)'],'1073':['115072602',1,'HPnIntegral420 (E)'],
+'1074':['115072581',1,'HPnMantequi420 (E)'],'0435':['115074456',1,'BTortillaChia330'],'1539':['111032386',1,'BTortillaHna330g']},
+'13486':{'23':['111961041',1,'BOTECITOS VAINILLA 210 G X 6'],'45':['115234528',1,'PANQUE CHOCOLATE 390 G X 6'],'48':['115253569',1,'BOTECITO FUDGE 300 G X 6'],
+'46':['115253577',1,'PANQUE FUDGE 510 G X 6'],'49':['115257682',1,'PANQUE FUDGE 1020 G X 12']},
+'212249':{'d:MALTIN POLAR NR 250ML12UN':['111026931',12,'MALTIN POLAR NR 250ML12UN'],'d:MALTIN POLAR LAT SLEEK 355ML24UN':['114719507',24,'MALTIN POLAR LAT SLEEK 355ML24UN']},
+'12096':{'d:CHOC LECHE 30G':['111002656',12,'CHOC LECHE 30g'],'d:CRI CRI 27G':['111002658',12,'CRI-CRI 27g'],'d:TORONTO BOLSA 125G':['111002669',1,'TORONTO Bolsa 125g'],
+'d:GALAK 30G':['111002673',12,'GALAK 30g'],'d:SAMBA FRESA 32GR':['111002694',20,'SAMBA Fresa 32gr'],'d:CHOC LECHE 130G':['111015773',5,'CHOC LECHE 130g'],
+'d:SAMBA CHOC 32G':['111017188',20,'SAMBA Choc 32g'],'d:CRI CRI 123G':['111017716',5,'CRI-CRI 123g'],'d:TORONTO CHOC 9G':['111020703',1,'TORONTO Choc 9g'],
+'d:COCOSETTE MAXI 50G':['111022213',18,'COCOSETTE Maxi 50g'],'d:COCOSETTE XMAS COOKIE MP 60 4X50G VE':['111024896',1,'COCOSETTE Xmas Cookie MP 60(4x50g) VE'],
+'d:SUSY MAXI 50G':['111025699',18,'SUSY Maxi 50g'],'d:NAVSUSYMP 4X50':['111026898',1,'NAVSusyMP 4x50'],'d:CARRE AVE 100G':['111031644',10,'CARRE Ave 100g'],
+'d:CARRE AVELLANA 25G':['111920200',16,'CARRE Avellana 25g'],'d:RIKITI 30G':['111926428',12,'RIKITI 30g'],'d:GALAK WHTCHCLT 130G':['111931028',5,'GALAK WHTCHCLT 130g'],
+'d:NESTSVY ANIV 100G':['111952332',10,'NESTSVY Aniv 100g'],'d:NESTSVY 75ANIV100G':['111921073',10,'NESTSVY 75Aniv100g'],'d:POSTRES 55 200G':['111960528',4,'Postres 55 200g'],
+'d:GTUBITO30X16G':['114960464',30,'Gtubito30x16g'],'d:SAVOY DELIG100GR':['115589505',6,'SAVOY Delig100gr'],'d:SAVOY DELI 27GR':['115686532',12,'SAVOY Deli 27gr'],
+'d:SAMBA AVELL 32':['111107157',20,'SAMBA Avell 32'],'d:TRIOCREAM 12X90':['115686516',12,'TrioCream(12x90)'],'d:TRIOCHOCO 12X90':['115686541',12,'TrioChoco(12x90)'],
+'d:CRI CRI 60G':['116095646',9,'CRI-CRI 60g'],'d:SAVOY BOLERO 25G':['116745661',16,'SAVOY Bolero 25g']}};
+/* Proveedores conocidos: nombre, cómo reconocerlos en una factura y cómo facturan.
+   cajas = cada unidad facturada es una caja de la hoja (Pack Size); igual = la factura viene en las mismas unidades que la hoja;
+   producto = depende del producto (displays, paquetes): se aprende la primera vez. Uno nuevo se deduce solo. */
+const SUPS={'1511':{name:'PEPSI-COLA VENEZUELA, C.A.',re:/PEPSI/i,conv:'cajas',fmt:'lote'},'12340':{name:'COCA-COLA FEMSA DE VENEZUELA',re:/COCA[\s-]*COLA|FEMSA/i,conv:'cajas'},
+'212249':{name:'CERVECERIA POLAR, C.A.',re:/CERVECER[IÍ]A\s*POLAR|MALTIN/i,conv:'cajas'},'13161':{name:'BIMBO DE VENEZUELA',re:/BIMBO/i,conv:'igual'},
+'13486':{name:'ONCE ONCE C.A.',re:/ONCE\s*ONCE/i,conv:'igual'},'12096':{name:'NESTLE VENEZUELA S.A.',re:/NESTL[EÉ]|SAVOY|NESTSVY/i,conv:'producto'}};
 const PACKS=[1,2,3,4,6,8,10,12,15,16,18,20,24,30,36,48];
-function eqFor(sup){const o={},s=SEED_EQ[sup]||{},u=(db.eq&&db.eq[sup])||{};for(const k in s)o[k]={item:s[k][0],pack:s[k][1],desc:s[k][2]};for(const k in u)o[k]={item:u[k][0],pack:u[k][1],desc:u[k][2]};return o}
-function saveEq(sup,code,item,pack,desc){if(!code)return;db.eq=db.eq||{};(db.eq[sup]=db.eq[sup]||{})[code]=[item,pack||1,desc||''];persist()}
+function eqFor(sup){const o={},s=SEED_EQ[sup]||{},u=(db.eq&&db.eq[sup])||{};for(const k in s)o[k]={item:s[k][0],pack:s[k][1],desc:s[k][2]};
+  for(const k in u){const q=o[k];o[k]={item:u[k][0],pack:u[k][1]||(q&&q.item===u[k][0]?q.pack:null),desc:u[k][2]||(q&&q.desc)||''}}return o}
+function saveEq(sup,key,item,pack,desc){if(!key||!sup||!item)return;db.eq=db.eq||{};const m=db.eq[sup]=db.eq[sup]||{},old=m[key];m[key]=[item,pack||(old&&old[0]===item?old[1]:null)||null,desc||(old&&old[2])||''];persist()}
+/* ---------- Emparejar factura con hoja (cualquier proveedor) ---------- */
+const descKey=d=>{const t=fold(d).toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();return t?'d:'+t:''};
+const lineKey=l=>l.key||l.code||descKey(l.ocrDesc||l.desc);
+const sizeNums=d=>[...new Set((fold(d).match(/\d+(?:[.,]\d+)?/g)||[]).map(x=>String(parseFloat(x.replace(',','.')))))];
+/* Parecido entre dos descripciones (0 a 1); si las dos traen números (tamaños), deben coincidir */
+/* Cuánto de la descripción de la factura (abreviada, a veces pegada: "BPnMulticereal") aparece en la de la hoja */
+const tri=s=>{const t=fold(s).toUpperCase().replace(/[^A-Z0-9]+/g,''),o=new Set();for(let i=0;i+3<=t.length;i++)o.add(t.slice(i,i+3));return o};
+function triSim(a,b){const A=tri(a),B=tri(b);if(A.size<3||!B.size)return 0;let n=0;for(const x of A)if(B.has(x))n++;return n/A.size}
+function descMatch(a,b){const s=Math.max(FOCR.descSim(a,b),0.85*triSim(a,b)),na=sizeNums(a),nb=sizeNums(b);if(na.length&&nb.length){const hit=na.filter(x=>nb.includes(x)).length;return hit?Math.min(1,s+0.25*hit/Math.max(na.length,nb.length)):s*0.7}return s}
+function supConv(sup){return(db.conv&&db.conv[sup])||(SUPS[sup]&&SUPS[sup].conv)||null}
+const CONV_TXT={cajas:'cajas (× unidades por caja de la hoja)',igual:'las mismas unidades de la hoja',producto:'depende del producto (display, paquete…)'};
+/* Busca la línea en las equivalencias del proveedor: por código (corrigiendo errores de lectura) o por descripción */
+function eqLookup(sup,l,items){
+  const eq=eqFor(sup),k=lineKey(l),d=l.ocrDesc||l.desc||'';
+  if(k&&eq[k]){
+    if(l.key||!l.code||!/[A-Za-z]{4,}/.test(d))return{key:k,...eq[k],how:'exacto'};
+    // código leído con un dígito errado que cae en otro producto: la descripción decide
+    const s0=descMatch(d,eq[k].desc);let b=null;
+    for(const c in eq){if(c===k)continue;const s=descMatch(d,eq[c].desc);if(s>=0.55&&s>=s0+0.3&&(!b||s>b.s))b={c,s}}
+    if(b)return{key:b.c,...eq[b.c],how:'corregido'};
+    if(!(items&&!items.some(i=>i.item===eq[k].item)&&s0<0.35))return{key:k,...eq[k],how:'exacto'};
+  }
+  if(l.code){const cands=Object.keys(eq).filter(c=>!c.startsWith('d:')&&c!==k).map(code=>({code,desc:eq[code].desc}));
+    const m=FOCR.matchCode(l.code,d,cands);if(m&&!(items&&!items.some(i=>i.item===eq[m.code].item)&&descMatch(d,eq[m.code].desc)<0.35))return{key:m.code,...eq[m.code],how:m.how==='exacto'?'exacto':'corregido'}}
+  let best=null;for(const c in eq){const s=descMatch(d,eq[c].desc);if(s>=0.62&&(!best||s>best.s))best={c,s}}
+  return best?{key:best.c,...eq[best.c],how:'desc'}:null;
+}
+/* Unidades que trae cada unidad facturada. guess = deducido de la misma hoja (hay que confirmarlo una vez) */
+function factorOf(sup,conv,l,i){
+  if(l.pack)return{f:+l.pack,guess:!!l.fg};
+  const e=eqLookup(sup,l);if(e&&e.pack&&(!l.item||e.item===l.item))return{f:+e.pack,guess:false};
+  if(conv==='cajas'&&i&&i.pack)return{f:+i.pack,guess:false};
+  if(conv==='igual'||/^(EA|UND|UN|UNID|PZA?)$/i.test(l.um||''))return{f:1,guess:false};
+  // sin regla conocida: lo más probable según la hoja, siempre por confirmar
+  if(i&&l.cant>0){if(i.pack&&l.cant*i.pack===i.rec)return{f:+i.pack,guess:true};if(l.cant===i.rec)return{f:1,guess:true};
+    if(i.rec>0&&i.rec%l.cant===0&&i.rec/l.cant<=(i.pack||48))return{f:i.rec/l.cant,guess:true};if(!conv&&i.pack)return{f:+i.pack,guess:true}}
+  return{f:null,guess:true};
+}
+/* Cómo factura un proveedor nuevo: se deduce de las líneas ya emparejadas (la mayoría manda) */
+function inferConv(pairs){let a=0,b=0,n=0;for(const{l,i}of pairs){if(!i||!(l.cant>0)||!(i.pack>1)||i.rec==null)continue;if(l.cant*i.pack===i.rec)a++;else if(l.cant===i.rec)b++;else n++}
+  const t=a+b+n;return a>=2&&a>=t*0.6?'cajas':(b>=2&&b>=t*0.6?'igual':null)}
+function pairScore(l,i,conv){
+  let s=descMatch(l.ocrDesc||l.desc||'',i.desc||'');const q=l.cant;
+  if(q>0&&i.rec!=null){const f=conv==='cajas'?i.pack:((conv==='igual'||/^(EA|UND|UN)$/i.test(l.um||''))?1:0);if(f){if(q*f===i.rec)s+=0.3;else s-=0.05}else if(i.rec%q===0)s+=0.1}
+  return s;
+}
+/* Empareja líneas sin producto con filas libres de la hoja (la pareja más parecida primero) */
+function autoPair(xs,rows,conv){
+  const c=[];for(const x of xs)for(const i of rows){if(x.l.rej&&x.l.rej.includes(i.item))continue;const s=pairScore(x.l,i,conv);if(s>=0.32)c.push({x,i,s})}
+  c.sort((a,b)=>b.s-a.s);const used=new Set(),m=new Map();for(const k of c){if(m.has(k.x)||used.has(k.i))continue;m.set(k.x,k);used.add(k.i)}
+  return m;
+}
+const PAIR_OK=0.75;
+/* Si no se sabe cómo factura el proveedor: se empareja, se deduce de lo emparejado y se vuelve a emparejar con esa regla */
+function pairAll(xs,rows,conv,known){
+  let m=autoPair(xs,rows,conv);if(conv)return{m,conv};
+  const c2=inferConv([...(known||[]),...[...m.values()].filter(k=>k.s>=0.5).map(k=>({l:k.x.l,i:k.i}))]);
+  if(c2)m=autoPair(xs,rows,c2);return{m,conv:c2};
+}
+/* Proveedor según el texto de una factura */
+function supOfText(t){t=String(t||'');for(const k in SUPS)if(SUPS[k].re.test(t))return k;const n=db.supRe||{};for(const k in n){try{if(new RegExp(n[k],'i').test(t))return k}catch(e){}}return ''}
+const SUPSTOP=/^(VENEZUELA|COMPANIA|COMPAÑIA|DISTRIBUIDORA|COMERCIAL|INDUSTRIAS?|GRUPO|CORPORACION|ALIMENTOS|MARINELA|FEMSA)$/;
+/* Parecido entre dos nombres de proveedor leídos (tolera letras mal leídas) */
+function nameSim(a,b){const A=supWords(a),B=supWords(b);if(!A.length||!B.length)return 0;
+  const [s,l]=A.length<=B.length?[A,B]:[B,A],w=s.filter(x=>l.some(y=>y===x||(x.length>=4&&(y.startsWith(x)||x.startsWith(y)))||(x.length>=5&&FOCR.lev(x,y)<=1))).length/s.length;
+  return Math.max(w,triSim(A.join(' '),B.join(' ')),triSim(B.join(' '),A.join(' ')))}
+function supWords(name){return fold(name).toUpperCase().replace(/[^A-Z0-9 ]+/g,' ').split(/\s+/).filter(w=>w.length>=4&&!SUPSTOP.test(w))}
 const fmtN=n=>Number(n||0).toLocaleString('es-VE',{maximumFractionDigits:2});
 
 let ver=null,draft=null,draftDone=null;
@@ -1187,14 +1486,33 @@ async function readDDR(file){
 }
 
 /* ---------- Comparación ---------- */
-function lineItem(v,l,eq){const e=eq[l.code];return{item:l.item||(e&&e.item)||'',pack:l.pack||(e&&e.pack)||0}}
+/* Empareja cada línea de las facturas con una fila de la hoja */
+function verResolve(v){
+  const byItem={};v.items.forEach(i=>{if(!byItem[i.item])byItem[i.item]=i});
+  const L=[];for(const f of v.facs)for(const l of f.lines)L.push({f,l,item:'',i:null,how:''});
+  const K=knownItems(v.sup),eq=eqFor(v.sup);
+  for(const x of L){let item=x.l.item,how=item?(x.l.pa||'user'):'';
+    if(!item){const e=eqLookup(v.sup,x.l);if(e){item=e.item;how=e.how==='desc'?'auto':'eq'}}
+    x.item=item;x.how=how;x.i=item&&byItem[item]&&!(x.l.rej&&x.l.rej.includes(item))?byItem[item]:null}
+  const taken=new Set(L.filter(x=>x.i).map(x=>x.i));
+  // hoja escaneada: el código de la hoja pudo leerse mal; se busca por parecido
+  if(v.scan)for(const x of L){if(x.i||!x.item)continue;const kd=(K[x.item]||{}).desc||x.l.desc||'',pk=x.l.pack||(eq[lineKey(x.l)]||{}).pack;let best=null;
+    for(const i of v.items){if(taken.has(i)||(x.l.rej&&x.l.rej.includes(i.item)))continue;if(K[i.item]&&(L.some(y=>y.item===i.item)||(i.fl&&i.fl.item!=='unk')))continue;
+      const d=codeDist(i.item,x.item),s=FOCR.descSim(kd,i.desc),sc=d-2*s-(pk&&i.pack===pk?0.5:0);if((d<=2.6||s>=0.45)&&(!best||sc<best.sc))best={i,sc}}
+    if(best){x.i=best.i;x.approx=true;taken.add(best.i)}}
+  // líneas sin producto: por descripción y cantidad
+  const conv0=supConv(v.sup)||v.conv||inferConv(L.filter(x=>x.i).map(x=>({l:x.l,i:x.i})));
+  const known=L.filter(x=>x.i).map(x=>({l:x.l,i:x.i})),{m}=pairAll(L.filter(x=>!x.i&&!x.item),v.items.filter(i=>!taken.has(i)),conv0,known);
+  for(const[x,k]of m){x.i=k.i;x.item=k.i.item;x.how=k.s>=PAIR_OK?'auto':'auto?';taken.add(k.i)}
+  return{L,conv:conv0||inferConv(L.filter(x=>x.i).map(x=>({l:x.l,i:x.i})))};
+}
 /* ---------- Pantalla de la orden ---------- */
 function openVer(id){ver=db.fac.find(v=>v.id===id);if(!ver)return;showOnly('s3');renderVer();setTimeout(()=>{ocrLib().then(()=>FOCR.getWorker()).catch(()=>{})},800)}
 $('#vBack').onclick=()=>{ver=null;showOnly('s1');setHomeSec('fac')};
 let verShowOk=false;
 $('#vRes').onclick=e=>{if(e.target.id==='tOk'){verShowOk=!verShowOk;renderVer();return}
   const b=e.target.closest('[data-xpair]');if(!b)return;const x=verCompare(ver).extra[+b.dataset.xpair];if(!x)return;
-  pickItem(x.l.desc||x.l.code,x.pack,it=>{x.l.item=it.item;if(!x.l.pack||x.l.pack===1)x.l.pack=it.pack;saveEq(ver.sup,x.l.code,it.item,x.l.pack,x.l.desc);persist();renderVer()})};
+  pickItem(x.l.desc||x.l.ocrDesc||x.l.code,0,it=>{x.l.item=it.item;x.l.pa='';x.l.rej=(x.l.rej||[]).filter(t=>t!==it.item);saveEq(ver.sup,lineKey(x.l),it.item,x.l.pack&&!x.l.fg?x.l.pack:null,x.l.ocrDesc||x.l.desc);persist();renderVer()})};
 $('#fl').onclick=e=>{const ed=e.target.closest('[data-fed]'),dl=e.target.closest('[data-fdel]');
   if(ed){const f=ver.facs.find(x=>x.id===ed.dataset.fed);if(f)openReview({vid:ver.id,fid:f.id,num:f.num,ctrl:f.ctrl,po:f.po,total:f.total,lines:f.lines.map(l=>({...l,flags:{}})),thumb:null,src:null,rot:0})}
   if(dl){const f=ver.facs.find(x=>x.id===dl.dataset.fdel);if(f&&confirm('¿Quitar la factura '+(f.num||'')+'?')){ver.facs=ver.facs.filter(x=>x!==f);persist();renderVer()}}};
@@ -1204,67 +1522,82 @@ $('#bFacCam').onclick=()=>$('#ffcam').click();
 $('#bFacGal').onclick=()=>$('#ffgal').click();
 $('#bFacMan').onclick=()=>openReview({vid:ver.id,num:'',ctrl:'',po:ver.po,total:'',lines:[],thumb:null,src:null,rot:0,manual:true});
 $('#ffcam').onchange=$('#ffgal').onchange=e=>{const fs=[...e.target.files];e.target.value='';if(fs.length)addFacFiles(fs)};
+/* Lee una factura con el lector que corresponde a su formato (tabla con columna Lote, o cualquier otra) */
+async function readInvoice(src,p,prog){
+  const good=x=>x?x.lines.filter(l=>(l.code||l.desc)&&l.cant!=null).length:0,s=supOfText(p&&p.txt);
+  const lote=!!(p&&p.lote)||(SUPS[s]&&SUPS[s].fmt==='lote')||(db.fmt&&db.fmt[s]==='lote'),rot=p?p.rot:undefined;
+  const a=()=>FOCR.read(src,{rotation:rot,progress:prog}),b=()=>FOCR.readGeneric(src,{rotation:rot,progress:prog});
+  let r=lote?await a():await b();
+  if(good(r)<Math.max(2,r.lines.length*0.6)){const r2=lote?await b():await a();if(good(r2)>good(r))r=r2}
+  if(s&&good(r)>=2&&!(SUPS[s]&&SUPS[s].fmt)){db.fmt=db.fmt||{};db.fmt[s]=r.generic?'gen':'lote'}
+  r.text=(r.text||'')+' '+((p&&p.txt)||'');
+  return r;
+}
 async function addFacFiles(files){
-  try{busy('Preparando…');await ocrLib()}catch(err){busy(false);alert(err.message);return}
-  const srcs=[];
-  for(const f of files){
-    if(/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name)){
-      try{busy('Abriendo PDF…');const lib=await pdfLib(),pdf=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
-        for(let p=1;p<=pdf.numPages;p++)srcs.push({pdf,p,name:f.name+' pág. '+p})}catch(err){busy(false);alert('No pude abrir '+f.name);return}
-    }else srcs.push({file:f,name:f.name});
-  }
-  let skipped=0,saved=0;
-  for(let k=0;k<srcs.length;k++){
-    const s=srcs[k],tag=srcs.length>1?' ('+(k+1)+' de '+srcs.length+')':'';
-    let src;
+  try{busy('Preparando…');await ocrLib();await FOCR.getWorker(t=>busy(t))}catch(err){busy(false);alert(err.message);return}
+  let pages;try{busy('Abriendo…');pages=await expandPages(files)}catch(err){busy(false);alert('No pude abrir el archivo.');return}
+  let skipped=0;
+  for(let k=0;k<pages.length;k++){
+    const tag=pages.length>1?' ('+(k+1)+' de '+pages.length+')':'';
     try{
-      busy('Abriendo imagen'+tag+'…');
-      if(s.pdf){const pg=await s.pdf.getPage(s.p),vp0=pg.getViewport({scale:1}),sc=2600/Math.max(vp0.width,vp0.height),vp=pg.getViewport({scale:sc});
-        src=document.createElement('canvas');src.width=vp.width;src.height=vp.height;const g=src.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,src.width,src.height);await pg.render({canvasContext:g,viewport:vp}).promise}
-      else src=await createImageBitmap(s.file);
-      const r=await FOCR.read(src,{progress:t=>busy(t+tag)});
-      if(!ver.sup&&r.pepsi)setSup(ver,'1511');
-      if(s.pdf&&(!r.lines.length||(r.po&&ver.po&&FOCR.lev(r.po,ver.po)>2))){skipped++;continue}
+      busy('Revisando'+tag+'…');
+      const p=await FOCR.classify(await pages[k].get(1600),()=>{});
+      if(pages.length>1&&(p.type==='ddr'||p.type==='resumen')){skipped++;continue}
+      const src=await pages[k].get(2600),r=await readInvoice(src,p,t=>busy(t+tag));
+      if(pages.length>1&&(!r.lines.length||(r.po&&r.po.length===8&&ver.po&&FOCR.lev(r.po,ver.po)>2))){skipped++;continue}
+      if(!ver.sup){const s=supOfText(r.text);if(s)setSup(ver,s)}
       busy(false);
       const res=await openReview(draftFrom(r,src));
-      if(res==='saved')saved++;
       if(res==='stop')break;
-    }catch(err){busy(false);if(!confirm('No pude leer '+s.name+' ('+(err.message||err)+'). ¿Seguir con las demás?'))break}
+    }catch(err){busy(false);console.error(err);if(!confirm('No pude leer '+pages[k].name+' ('+(err.message||err)+'). ¿Seguir con las demás?'))break}
   }
   busy(false);showOnly('s3');renderVer();
   if(skipped)say2(skipped+(skipped===1?' página no era':' páginas no eran')+' factura de esta orden y se omitieron.');
 }
 function say2(t){const m=$('#vMsg');m.textContent=t;m.classList.remove('hide');clearTimeout(say2.t);say2.t=setTimeout(()=>m.classList.add('hide'),6000)}
 function draftFrom(r,src){
-  const eq=eqFor(ver.sup),cands=Object.entries(eq).map(([code,e])=>({code,desc:e.desc+' '+((ver.items.find(i=>i.item===e.item)||{}).desc||'')}));
-  const lines=r.lines.filter(l=>l.code||l.desc||l.cant).map(l=>{
-    const m=FOCR.matchCode(l.code,l.desc,cands),code=m?m.code:l.code,e=eq[code];
-    return{code,desc:(e&&e.desc)||l.desc,ocrDesc:l.desc,cant:l.cant,pack:(e&&e.pack)||l.pack||null,item:'',
-      flags:{code:m?(m.how==='exacto'?'':'corr'):'unk',cant:l.cant==null?'none':(l.cantConf<70?'low':''),raw:l.codeRaw}};
+  const used=new Set();for(const f of ver.facs)for(const l of f.lines)if(l.item)used.add(l.item);
+  const lines=r.lines.filter(l=>l.code||(l.desc&&/[A-Za-z]{2,}/.test(l.desc))||l.cant).map(l=>{
+    const e=eqLookup(ver.sup,l,ver.items),fl={code:'',cant:l.cant==null?'none':(l.cantConf<70?'low':''),raw:l.codeRaw};
+    if(l.code&&e&&e.how==='corregido')fl.code='corr';else if(l.code&&!e)fl.code=l.codeConf!=null&&l.codeConf<60?'low':'';
+    const code=e&&!e.key.startsWith('d:')?e.key:l.code;
+    return{code,key:e?e.key:'',desc:(e&&e.desc)||l.desc,ocrDesc:l.desc,cant:l.cant,um:l.um||'',pack:(e&&e.pack)||l.pack||null,item:e?e.item:'',pa:e&&e.how==='desc'?'auto':'',_s:e?(e.how==='exacto'?2:1)+descMatch(l.desc,e.desc):0,flags:fl};
   });
+  // el mismo producto dos veces en una factura: se queda con la línea que más se parece
+  const seen={};for(const l of lines){if(!l.item)continue;const o=seen[l.item];if(!o){seen[l.item]=l;continue}const lose=o._s>=l._s?l:o;if(lose===o)seen[l.item]=l;lose.item='';lose.key='';lose.pack=null;lose.flags.code='corr';lose.code=lose.flags.raw?fixCode(lose.flags.raw):lose.code}
+  // lo demás se empareja con la hoja por descripción y cantidad
+  const known=lines.filter(l=>l.item).map(l=>({l,i:ver.items.find(i=>i.item===l.item)})).filter(x=>x.i);
+  for(const f of ver.facs)for(const l of f.lines){const i=l.item&&ver.items.find(x=>x.item===l.item);if(i)known.push({l,i})}
+  const conv0=supConv(ver.sup)||ver.conv||inferConv(known);
+  const{m}=pairAll(lines.filter(l=>!l.item).map(l=>({l})),ver.items.filter(i=>!used.has(i.item)&&!lines.some(l=>l.item===i.item)),conv0,known);
+  for(const[x,k]of m){x.l.item=k.i.item;x.l.pa=k.s>=PAIR_OK?'auto':'auto?'}
+  lines.forEach(l=>delete l._s);
   const po=r.po&&ver.po&&FOCR.lev(r.po,ver.po)<=2?ver.po:r.po;
   const th=document.createElement('canvas'),sc=Math.min(1,1100/r.canvas.width);th.width=r.canvas.width*sc;th.height=r.canvas.height*sc;th.getContext('2d').drawImage(r.canvas,0,0,th.width,th.height);
   const sum=lines.reduce((a,l)=>a+(l.cant||0),0),full=lines.every(l=>l.cant!=null);
-  return{vid:ver.id,num:r.num,ctrl:r.ctrl,po,total:(r.total!=null&&full&&r.total===sum)?r.total:'',lines,thumb:th.toDataURL('image/jpeg',.82),src,rot:r.rotation};
+  return{vid:ver.id,num:r.num,ctrl:r.ctrl,po,total:r.total!=null&&r.total>0?r.total:'',lines,thumb:th.toDataURL('image/jpeg',.82),src,rot:r.rotation,lote:!r.generic};
 }
+const fixCode=t=>String(t||'').replace(/[Oo]/g,'0').replace(/[lI|!]/g,'1').replace(/\D/g,'');
 
 /* ---------- Revisión de una factura ---------- */
 function openReview(d){draft=d;showOnly('s4');renderReview();return new Promise(ok=>{draftDone=ok})}
-function prodOf(l){const eq=eqFor(ver.sup),e=eq[l.code],item=l.item||(e&&e.item),it=item&&ver.items.find(i=>i.item===item);return{item,it,e}}
+function prodOf(l){const e=l.item?null:eqLookup(ver.sup,l),item=l.item||(e&&e.item)||'',it=item&&ver.items.find(i=>i.item===item);return{item,it,e}}
+function draftConv(){const P=[];for(const f of ver.facs)if(f.id!==draft.fid)for(const l of f.lines){const i=l.item&&ver.items.find(x=>x.item===l.item);if(i)P.push({l,i})}
+  for(const l of draft.lines){const i=l.item&&ver.items.find(x=>x.item===l.item);if(i)P.push({l,i})}return supConv(ver.sup)||ver.conv||inferConv(P)}
 function renderReview(){
   const d=draft;
   $('#rvImg').innerHTML=d.thumb?'<img src="'+d.thumb+'" alt="Factura" id="rvPic">':'';
   $('#rvRot').classList.toggle('hide',!d.src);
   $('#rvNum').value=d.num||'';
   $('#rvPoW').innerHTML=d.po&&d.po!==ver.po?'⚠ Esta factura dice orden '+esc(d.po)+' y la hoja es de la orden '+esc(ver.po)+'.':'';
+  const cv=draftConv();
   $('#rvL').innerHTML=d.lines.map((l,k)=>{
-    const p=prodOf(l),warn=l.flags&&(l.flags.code||l.flags.cant)||!p.item||!l.pack||l.cant==null;
-    const opts=[...new Set([...PACKS,l.pack||0])].filter(Boolean).sort((a,b)=>a-b).map(n=>'<option value="'+n+'"'+(n===l.pack?' selected':'')+'>'+n+'</option>').join('');
+    const p=prodOf(l),fo=factorOf(ver.sup,cv,l,p.it),warn=l.flags&&(l.flags.code||l.flags.cant)||!p.item||!fo.f||l.cant==null||l.pa==='auto?';
     return '<div class="ln'+(warn?' warn':'')+'" data-k="'+k+'">'+
       '<div class="row lnh"><input type="text" class="lc" data-k="'+k+'" value="'+esc(l.code||'')+'" inputmode="numeric" placeholder="'+(l.item?'Código (opcional)':'Código')+'" aria-label="Código"><button class="sec sm" data-ldel="'+k+'" aria-label="Quitar línea">🗑</button></div>'+
-      '<div class="lp">'+(p.it?esc(p.it.desc):(p.item?'⚠ Ítem '+esc(p.item)+' (no está en la hoja)':'❓ Código desconocido · <button class="lnk" data-lpair="'+k+'">Emparejar</button>'))+'</div>'+
+      '<div class="lp">'+(p.it?esc(p.it.desc)+(l.pa?' <small class="'+(l.pa==='auto?'?'tbad':'mu')+'">· '+(l.pa==='auto?'?'¿es este?':'emparejado por descripción')+' · <button class="lnk" data-lpair="'+k+'">Cambiar</button></small>':''):(p.item?'⚠ Ítem '+esc(p.item)+' (no está en la hoja)':'❓ Sin emparejar · <button class="lnk" data-lpair="'+k+'">Emparejar</button>'))+'</div>'+
       '<small class="mu">'+esc(l.ocrDesc||l.desc||'')+(l.flags&&l.flags.code==='corr'?' · código corregido (leído '+esc(l.flags.raw||'')+')':'')+'</small>'+
-      '<div class="row lnq"><button class="sec sm" data-lq="-1" data-k="'+k+'">−</button><input class="lqn'+(l.cant==null||(l.flags&&l.flags.cant)?' wq':'')+'" data-k="'+k+'" type="number" inputmode="numeric" min="0" value="'+(l.cant==null?'':l.cant)+'" placeholder="?" aria-label="Cajas"><button class="sec sm" data-lq="1" data-k="'+k+'">+</button><span class="mu">cajas ×</span><select class="lpk" data-k="'+k+'" aria-label="Unidades por caja"><option value="">?</option>'+opts+'</select><span class="lu">= '+(l.cant!=null&&l.pack?fmtN(l.cant*l.pack):'?')+' und</span></div></div>'}).join('')||'<p class="mu">Sin líneas. Toca “+ Agregar línea”.</p>';
+      '<div class="row lnq"><button class="sec sm" data-lq="-1" data-k="'+k+'">−</button><input class="lqn'+(l.cant==null||(l.flags&&l.flags.cant)?' wq':'')+'" data-k="'+k+'" type="number" inputmode="numeric" min="0" value="'+(l.cant==null?'':l.cant)+'" placeholder="?" aria-label="Cantidad facturada"><button class="sec sm" data-lq="1" data-k="'+k+'">+</button><span class="mu">'+esc(l.um||'cant.')+' ×</span><input class="lpk'+(fo.guess?' wq':'')+'" data-k="'+k+'" type="number" inputmode="numeric" min="1" value="'+(fo.f||'')+'" placeholder="?" aria-label="Unidades por cada una" title="'+(fo.guess?'Calculado con la hoja: confírmalo':'Unidades que trae cada una')+'"><span class="lu">= '+(l.cant!=null&&fo.f?fmtN(l.cant*fo.f):'?')+' und</span></div>'+(fo.guess&&fo.f?'<small class="mu">≈ unidades por '+umOf(l)+' calculadas con la hoja; cámbialas si no es así</small>':'')+'</div>'}).join('')||'<p class="mu">Sin líneas. Toca “+ Producto de la hoja”.</p>';
   updTotal();
 }
 function updTotal(){
@@ -1280,38 +1613,40 @@ $('#rvTot').oninput=e=>{draft.total=e.target.value;const s=draft.lines.reduce((a
 $('#rvNum').oninput=e=>{draft.num=e.target.value.trim()};
 $('#rvL').addEventListener('input',e=>{
   const t=e.target,k=+t.dataset.k,l=draft.lines[k];if(!l)return;
-  if(t.classList.contains('lqn')){l.cant=t.value===''?null:Math.max(0,parseInt(t.value,10)||0);if(l.flags)l.flags.cant='';const u=t.closest('.ln').querySelector('.lu');u.textContent='= '+(l.cant!=null&&l.pack?fmtN(l.cant*l.pack):'?')+' und';t.classList.remove('wq');rvSumOnly()}
+  if(t.classList.contains('lqn')){l.cant=t.value===''?null:Math.max(0,parseInt(t.value,10)||0);if(l.flags)l.flags.cant='';const fo=factorOf(ver.sup,draftConv(),l,prodOf(l).it),u=t.closest('.ln').querySelector('.lu');u.textContent='= '+(l.cant!=null&&fo.f?fmtN(l.cant*fo.f):'?')+' und';t.classList.remove('wq');rvSumOnly()}
 });
 $('#rvL').addEventListener('change',e=>{
   const t=e.target,k=+t.dataset.k,l=draft.lines[k];if(!l)return;
-  if(t.classList.contains('lc')){l.code=t.value.replace(/\D/g,'');l.item='';const e2=eqFor(ver.sup)[l.code];if(e2){l.desc=e2.desc;if(!l.pack)l.pack=e2.pack}if(l.flags)l.flags.code=e2?'':'unk';renderReview()}
-  if(t.classList.contains('lpk')){l.pack=t.value?+t.value:null;renderReview()}
+  if(t.classList.contains('lc')){l.code=t.value.replace(/\D/g,'');l.item='';l.key='';l.pa='';const e2=eqFor(ver.sup)[l.code];if(e2){l.desc=e2.desc;l.item=e2.item;l.key=l.code;if(e2.pack)l.pack=e2.pack}if(l.flags)l.flags.code=e2?'':'unk';renderReview()}
+  if(t.classList.contains('lpk')){l.pack=t.value?Math.max(1,parseInt(t.value,10)||1):null;l.fg=false;renderReview()}
 });
 function rvSumOnly(){const s=draft.lines.reduce((a,l)=>a+(+l.cant||0),0);$('#rvSum').textContent=s;$('#rvTot').dispatchEvent(new Event('input'))}
 $('#rvL').addEventListener('click',e=>{
   const q=e.target.closest('[data-lq]'),dl=e.target.closest('[data-ldel]'),pr=e.target.closest('[data-lpair]');
   if(q){const l=draft.lines[+q.dataset.k];l.cant=Math.max(0,(l.cant||0)+(+q.dataset.lq));if(l.flags)l.flags.cant='';renderReview()}
   if(dl){draft.lines.splice(+dl.dataset.ldel,1);renderReview()}
-  if(pr){const l=draft.lines[+pr.dataset.lpair];pickItem(l.ocrDesc||l.desc||l.code,l.pack,it=>{l.item=it.item;if(!l.pack)l.pack=it.pack;if(l.flags)l.flags.code='';renderReview()})}
+  if(pr){const l=draft.lines[+pr.dataset.lpair];pickItem(l.ocrDesc||l.desc||l.code,0,it=>{l.item=it.item;l.pa='';if(l.flags)l.flags.code='';renderReview()})}
 });
 $('#rvImg').onclick=e=>{if(e.target.id==='rvPic')e.target.classList.toggle('big')};
-$('#rvAddH').onclick=()=>pickItem('',0,it=>{const eq=eqFor(ver.sup),code=Object.keys(eq).find(c=>eq[c].item===it.item)||'';draft.lines.push({code,desc:code?eq[code].desc:it.desc,cant:null,pack:(code&&eq[code].pack)||it.pack,item:code?'':it.item,flags:{cant:'none'}});renderReview();const q=document.querySelectorAll('#rvL .lqn');q[q.length-1]&&q[q.length-1].focus()});
-$('#rvAdd').onclick=()=>{draft.lines.push({code:'',desc:'',cant:1,pack:null,item:'',flags:{code:'unk'}});renderReview();const ins=document.querySelectorAll('#rvL .lc');ins[ins.length-1]&&ins[ins.length-1].focus()};
+$('#rvAddH').onclick=()=>pickItem('',0,it=>{const eq=eqFor(ver.sup),key=Object.keys(eq).find(c=>eq[c].item===it.item)||'';draft.lines.push({code:key&&!key.startsWith('d:')?key:'',key,desc:key?eq[key].desc:it.desc,cant:null,um:'',pack:(key&&eq[key].pack)||null,item:it.item,flags:{cant:'none'}});renderReview();const q=document.querySelectorAll('#rvL .lqn');q[q.length-1]&&q[q.length-1].focus()});
+$('#rvAdd').onclick=()=>{draft.lines.push({code:'',desc:'',cant:1,um:'',pack:null,item:'',flags:{code:'unk'}});renderReview();const ins=document.querySelectorAll('#rvL .lc');ins[ins.length-1]&&ins[ins.length-1].focus()};
 $('#rvRot').onclick=async()=>{
   if(!draft.src)return;if(draft.lines.length&&!confirm('Volver a leer la foto girada. Se perderán los cambios de esta pantalla.'))return;
-  try{const rot=(draft.rot+90)%360,r=await FOCR.read(draft.src,{rotation:rot,progress:t=>busy(t)});busy(false);const nd=draftFrom(r,draft.src);nd.fid=draft.fid;draft=nd;renderReview()}catch(err){busy(false);alert('No pude leer la foto: '+(err.message||err))}
+  try{const rot=(draft.rot+90)%360,r=await readInvoice(draft.src,{rot,lote:draft.lote,txt:''},t=>busy(t));busy(false);const nd=draftFrom(r,draft.src);nd.fid=draft.fid;draft=nd;renderReview()}catch(err){busy(false);alert('No pude leer la foto: '+(err.message||err))}
 };
 function closeReview(res){showOnly('s3');renderVer();const f=draftDone;draftDone=null;draft=null;f&&f(res)}
 $('#rvCancel').onclick=()=>closeReview('cancel');
 $('#rvSave').onclick=()=>{
-  const d=draft,bad=d.lines.filter(l=>(!l.code&&!l.item)||l.cant==null||!l.pack).length;
-  if(bad&&!confirm(bad+(bad===1?' línea está incompleta':' líneas están incompletas')+' (código, cajas o unidades por caja). ¿Guardar igual?'))return;
+  const d=draft,cv=draftConv(),bad=d.lines.filter(l=>{const p=prodOf(l);return !p.item||l.cant==null||!factorOf(ver.sup,cv,l,p.it).f}).length;
+  if(bad&&!confirm(bad+(bad===1?' línea está incompleta':' líneas están incompletas')+' (producto, cantidad o unidades). ¿Guardar igual?'))return;
   const s=d.lines.reduce((a,l)=>a+(+l.cant||0),0);
   if(d.total!==''&&d.total!=null&&+d.total!==s&&!confirm('La suma ('+s+') no coincide con el total de la factura ('+d.total+'). ¿Guardar igual?'))return;
-  for(const l of d.lines)if(l.item&&l.code)saveEq(ver.sup,l.code,l.item,l.pack,l.desc||l.ocrDesc);
+  // lo emparejado se recuerda para las próximas facturas del proveedor (lo dudoso, no)
+  for(const l of d.lines){if(!l.item||l.pa==='auto?')continue;const fo=factorOf(ver.sup,cv,l,prodOf(l).it);saveEq(ver.sup,lineKey(l),l.item,l.pack&&!l.fg?l.pack:(fo.guess?null:(eqFor(ver.sup)[lineKey(l)]||{}).pack||null),l.ocrDesc||l.desc)}
   const f={id:d.fid||uid(),num:d.num||'',ctrl:d.ctrl||'',po:d.po||'',total:d.total===''?null:(d.total==null?null:+d.total),
-    lines:d.lines.map(l=>({code:l.code,desc:l.desc||l.ocrDesc||'',cant:l.cant,pack:l.pack,item:l.item||'',...(l.rej?{rej:l.rej}:{})}))};
+    lines:d.lines.map(l=>({code:l.code,key:l.key||'',desc:l.desc||l.ocrDesc||'',ocrDesc:l.ocrDesc||'',cant:l.cant,um:l.um||'',pack:l.pack||null,item:l.item||'',...(l.pa?{pa:l.pa}:{}),...(l.fg?{fg:true}:{}),...(l.rej?{rej:l.rej}:{})}))};
   const k=ver.facs.findIndex(x=>x.id===f.id);if(k>=0)ver.facs[k]=f;else ver.facs.push(f);
+  if(!supConv(ver.sup)&&!ver.conv){const c=verCompare(ver);if(c.conv&&ver.sup){db.conv=db.conv||{};db.conv[ver.sup]=c.conv}}
   ver.upd=Date.now();persist();closeReview('saved');
 };
 
@@ -1320,7 +1655,7 @@ let pickCb=null,pickHint='',pickPack=0;
 function pickItem(hint,pack,cb){pickCb=cb;pickHint=hint||'';pickPack=pack||0;$('#pkQ').value='';$('#pk').classList.remove('hide');renderPick();setTimeout(()=>$('#pkQ').focus(),50)}
 function renderPick(){
   const q=fold($('#pkQ').value.trim()),used=new Set();
-  for(const f of ver.facs)for(const l of f.lines){const m=lineItem(ver,l,eqFor(ver.sup));if(m.item)used.add(m.item)}
+  for(const x of verResolve(ver).L)if(x.item)used.add(x.item);
   const L=ver.items.map(i=>({i,s:FOCR.descSim(pickHint,i.desc)+(pickPack&&i.pack===pickPack?0.25:0)-(used.has(i.item)?0.3:0)}))
     .filter(x=>!q||fold(x.i.desc+' '+x.i.item).includes(q)).sort((a,b)=>b.s-a.s);
   $('#pkHint').textContent=pickHint?'Factura: '+pickHint:'';
@@ -1334,11 +1669,11 @@ $('#pkL').onclick=e=>{const r=e.target.closest('[data-pk]');if(!r)return;const i
 function verSummary(){
   const v=ver,c=verCompare(v),L=[];
   L.push('🧾 Verificación de facturas','📦 Orden '+v.po+' · '+shortSup(v.supName),'📅 Recibido '+v.date+(v.cont?' · Contenedor '+v.cont:''),
-    '🗂 Facturas: '+(v.facs.map(f=>f.num||f.ctrl||'s/n').join(', ')||'ninguna'),'Facturado: '+fmtN(c.inv)+' und ('+fmtN(c.cases)+' cajas) · Hoja: '+fmtN(c.rec)+' und recibidas');
+    '🗂 Facturas: '+(v.facs.map(f=>f.num||f.ctrl||'s/n').join(', ')||'ninguna'),'Facturado: '+fmtN(c.inv)+' und · Hoja: '+fmtN(c.rec)+' und recibidas');
   const iss=c.rows.filter(r=>r.st==='diff'||r.st==='norec'),pend=c.rows.filter(r=>r.st==='noinv');
   if(iss.length){L.push('','⚠ Diferencias ('+iss.length+'):');iss.forEach(r=>L.push('• '+r.i.desc+' (ítem '+r.i.item+') — factura '+fmtN(r.inv)+' und, hoja '+fmtN(r.i.rec)+' und'))}
-  if(c.extra.length){const eq=eqFor(v.sup);L.push('','❌ Facturado y no está en la hoja ('+c.extra.length+'):');c.extra.forEach(x=>L.push('• '+(x.l.desc||(eq[x.l.code]||{}).desc||'')+' (código '+x.l.code+', factura '+(x.f.num||'s/n')+') — '+(x.l.cant||0)+' cajas'))}
-  const chk=c.rows.filter(r=>r.st==='check');if(chk.length){L.push('','🔎 Por confirmar con el papel ('+chk.length+'):');chk.forEach(r=>L.push('• '+r.i.desc+' — factura '+fmtN(r.inv)+' und, la hoja se leyó '+(r.i.rec==null?'sin cantidad':fmtN(r.i.rec)+' und')))}
+  if(c.extra.length){const eq=eqFor(v.sup);L.push('','❌ Facturado y no está en la hoja ('+c.extra.length+'):');c.extra.forEach(x=>L.push('• '+(x.l.desc||(eq[x.l.code]||{}).desc||'')+(x.l.code?' (código '+x.l.code+', ':' (')+'factura '+(x.f.num||'s/n')+') — '+qtyTxt(x)))}
+  const chk=c.rows.filter(r=>r.st==='check');if(chk.length){L.push('','🔎 Por confirmar ('+chk.length+'):');chk.forEach(r=>L.push('• '+r.i.desc+' — factura '+fmtN(r.inv)+' und'+(r.guess?' (unidades por bulto sin confirmar)':(r.weak?' (emparejado por descripción)':''))+', hoja '+(r.i.rec==null?'sin cantidad':fmtN(r.i.rec)+' und')))}
   if(pend.length){L.push('','⏳ Recibido sin factura ('+pend.length+'):');pend.forEach(r=>L.push('• '+r.i.desc+' (ítem '+r.i.item+') — '+fmtN(r.i.rec)+' und'))}
   if(!iss.length&&!c.extra.length&&!pend.length&&!chk.length&&v.facs.length)L.push('','✔ Todo coincide: las facturas cuadran con la hoja.');
   return L.join('\n');
@@ -1349,9 +1684,9 @@ $('#vXls').onclick=()=>{
     const stT={ok:'Coincide',diff:'Diferencia',norec:'Facturado sin recibir',noinv:'Recibido sin factura',none:'Sin movimiento'};
     const ws=XLSX.utils.aoa_to_sheet([['Ítem','Descripción','Unid. por caja','Esperado','Recibido (hoja)','Facturado','Diferencia','Estado','Códigos proveedor']].concat(c.rows.map(r=>[r.i.item,r.i.desc,r.i.pack,r.i.exp,r.i.rec,r.inv,r.inv-r.i.rec,stT[r.st],r.src.map(s=>s.l.code).join(', ')])).concat(c.extra.map(x=>[x.item||'',x.l.desc,x.pack,'','',x.u,x.u,'Facturado, no está en la hoja',x.l.code])));
     ws['!cols']=[{wch:11},{wch:36},{wch:8},{wch:9},{wch:10},{wch:10},{wch:10},{wch:22},{wch:16}];XLSX.utils.book_append_sheet(wb,ws,'Comparación');
-    const rows=[['Factura','Código','Descripción','Cajas','Unid. por caja','Unidades','Ítem Farmatodo']];
-    for(const f of v.facs)for(const l of f.lines){const m=lineItem(v,l,c.eq);rows.push([f.num||f.ctrl||'',l.code,l.desc,l.cant,m.pack||'',(l.cant||0)*(m.pack||0),m.item])}
-    const ws2=XLSX.utils.aoa_to_sheet(rows);ws2['!cols']=[{wch:13},{wch:10},{wch:28},{wch:7},{wch:9},{wch:9},{wch:12}];XLSX.utils.book_append_sheet(wb,ws2,'Facturas');
+    const rows=[['Factura','Código','Descripción','Cantidad','Unidad','Unid. por cada una','Unidades','Ítem Farmatodo']];
+    for(const x of verResolve(v).L){const fo=factorOf(v.sup,c.conv,x.l,x.i);rows.push([x.f.num||x.f.ctrl||'',x.l.code,x.l.desc,x.l.cant,x.l.um||'',fo.f||'',(x.l.cant||0)*(fo.f||0),x.item])}
+    const ws2=XLSX.utils.aoa_to_sheet(rows);ws2['!cols']=[{wch:13},{wch:10},{wch:28},{wch:8},{wch:7},{wch:9},{wch:9},{wch:12}];XLSX.utils.book_append_sheet(wb,ws2,'Facturas');
     XLSX.writeFile(wb,('Verificacion orden '+v.po+' '+new Date().toISOString().slice(0,10)).replace(/[\\/:*?"<>|]+/g,'-')+'.xlsx');
   }catch(e){alert('No pude crear el Excel. Revisa tu conexión y recarga.')}
 };
@@ -1369,11 +1704,28 @@ const SEED_FF={'1511':{
 '114364401':'Refresco 7 UP Pet 1Lt','115247492':'Soda Minalba Sparkling 355ML','115735496':'Refresco Pepsi Cola Zero Azucar 1 Lt','115975537':'Refresco Golden Pina 2 Lt',
 '115943771':'Refresco Pepsi Cola Zero Azucar 2 Lt','116073519':'Bebida Energetica Rockstar Lata 355ml','116298566':'Jugo Yukery Naranja Sin Azucar 1.5LT',
 '116338556':'Jugo Yukery Manzana Sin Azucar 1.5LT'}};
-const SEED_ITEMS_EXTRA={'1511':{'111967348':[12,'AGUA MINALBA SPARKLING C/G 500ML']}};
-const SUP_BY_NAME=[[/PEPS/i,'1511',"PEPSI-COLA VENEZUELA, C.A."]],SUP_NAMES={'1511':'PEPSI-COLA VENEZUELA, C.A.'};
+/* Ítems de la hoja de Oracle por proveedor [unidades por caja, descripción], para corregir códigos mal leídos de una hoja escaneada */
+const SEED_ITEMS_EXTRA={'1511':{'111967348':[12,'AGUA MINALBA SPARKLING C/G 500ML']},
+'12340':{'113802392':[16,'Refresco Chinotto Pet 355Ml'],'111240637':[2,'AGUA NEVADA 5 LT'],'111317055':[16,'Refresco Coca Cola Original Pet 355Ml'],'111017447':[12,'REF COCA COLA ORIGINAL LATA 355ML'],
+'111964629':[6,'REF COCA COLA ORIGINAL 1.5 LT'],'113856391':[12,'Jugo Del Valle Fresh Citrus 500Ml'],'111355888':[16,'AGUA NEVADA PET 355ML'],'111240618':[6,'AGUA NEVADA PET 1.5LT'],
+'111957960':[6,'REF COCA COLA ORIGINAL 2LT'],'111240617':[16,'AGUA NEVADA PET 600ML'],'115961522':[6,'Refresco Fanta Naranja 2 Lt'],'111228518':[6,'REF CHINOTTO S/CALORIAS 2 LT'],
+'111918357':[6,'Refresco Coca Cola Sin Azucar 2Lt'],'111957695':[6,'REF COCA COLA SABOR ORIGINAL 1L'],'113525381':[12,'Refresco Coca Cola S/Azucar Lata 355Ml'],'113580451':[16,'Refresco Coca Cola Sin Azucar Pet 355Ml']},
+'13161':{'114038402':[1,'Pan Bimbo Multicereal 600G'],'111022046':[10,'Pan Bimbo Blanco 500Gr'],'115072602':[8,'Pan Holsum Integral 420Gr'],'115072581':[3,'Pan Holsum Mantequilla 420Gr'],
+'111286137':[3,'PAN BIMBO HAMBURGUESA Ajonjoli 630 GR'],'115424735':[3,'Pan Cero Cero Integral Bimbo 500 Gr'],'115069420':[10,'Pan Holsum Blanco 420Gr'],'111032386':[6,'Tortillas Bimbo Rapiditas 330Gr'],
+'115074456':[3,'Tortillas Integrales Bimbo Chia y Quinoa 330Gr']},
+'13486':{'111961041':[24,'BOTECITOS ONCE ONCE VAINILLA DISPLAY 6UND'],'115234528':[24,'Panqué Once Once Chocolate 6 Und'],'115253569':[24,'Botecito Fudge Once Once Display 6Und'],
+'115253577':[24,'Panqué Fudge Once Once Display 6Und'],'115257682':[144,'Panqué Fudge Once Once 85Gr']},
+'212249':{'111026931':[12,'REF MALTIN POLAR BOTELLA 250 ML'],'114719507':[24,'Malta Maltin Polar 355Ml']},
+'12096':{'111002656':[288,'SAVOY LECHE 30GR'],'111002658':[288,'SAVOY CRI-CRI 27GR'],'111002669':[48,'CHO TORONTO BOLSA 125GR'],'111002673':[288,'CHO GALAK BLANCO 30G'],
+'111002694':[320,'CHO SAMBA FRESA 32GR'],'111015773':[80,'SAVOY LECHE 130GR'],'111017188':[320,'CHO SAMBA CHOCOLATE 32GR'],'111017716':[80,'CHO CRICRI 123GR'],'111020703':[24,'TORONTO CAJA X 36'],
+'111022213':[216,'GAL COCOSETTE MAXI 50GR'],'111024896':[60,'GAL COCOSETTE MAXI MULTI PACK 4UND 50GR'],'111025699':[216,'GAL SUSY MAXI 50GR'],'111026898':[60,'SUSY CHOCOLATE MULTIPACK 50GR'],
+'111031644':[120,'SAVOY ESP CARRE LECH/AVEL 100G'],'111920200':[256,'SAVOY CARRE MINI AVELL 25GR'],'111926428':[288,'CHO SAVOY RIKITI MANI 30 GR'],'111931028':[80,'CHO GALAK BLANCO 130GR'],
+'111952332':[120,'CHO SAVOY OSCURO 75 AÑOS 100GR'],'111960528':[64,'CHO SAVOY POSTRES OSCURO 55% 200GR'],'114960464':[960,'Chocolate Galak Tubito 16Gr'],'115589505':[96,'Chocolate Savoy Delight 100Gr'],
+'115686532':[288,'Chocolate Savoy Delight 27 Gr'],'111107157':[320,'Chocolate Samba Avellana 32Gr'],'111921073':[120,'SAVOY CHOCOLATE CON LECHE 100GR'],'115686541':[48,'Chocolate Chocotrio de Chocolate 90 Gr'],
+'115686516':[48,'Chocolate ChocoTrio Clásico 90Gr'],'116095646':[144,'Chocolate Cricri 60Gr'],'116745661':[256,'Chocolate Bolero Crunch 25G']}};
 function knownItems(sup){
-  const o={},ff=SEED_FF[sup]||{};
-  for(const e of Object.values(eqFor(sup)))o[e.item]={pack:e.pack,desc:ff[e.item]||e.desc};
+  const o={},ff=SEED_FF[sup]||{},cajas=supConv(sup)==='cajas';
+  for(const e of Object.values(eqFor(sup)))if(/^\d{9}$/.test(e.item))o[e.item]={pack:cajas?e.pack:null,desc:ff[e.item]||e.desc};
   const x=SEED_ITEMS_EXTRA[sup]||{};for(const k in x)o[k]={pack:x[k][0],desc:x[k][1]};
   const u=(db.items&&db.items[sup])||{};for(const k in u)o[k]={pack:u[k][0],desc:u[k][1]};
   return o;
@@ -1390,6 +1742,8 @@ function codeDist(a,b){
 /* Corrige filas leídas de una hoja escaneada y marca las dudosas */
 function fixDDR(rows,sup,totals){
   const K=knownItems(sup),keys=Object.keys(K);
+  // las reglas de "múltiplo de la caja" solo sirven si este proveedor entrega por cajas completas
+  const cv=supConv(sup),mult=rows.filter(r=>r.pack>1&&r.rec!=null),byCase=cv?cv==='cajas':(mult.length?mult.filter(r=>r.rec%r.pack===0).length/mult.length>=0.6:true);
   const cand=rows.map((r,i)=>{if(K[r.item])return{i,k:r.item,sc:-9};let best=null;
     for(const k of keys){const d=codeDist(r.item,k),s=FOCR.descSim(r.desc,K[k].desc),sc=d-2*s;if((d<=1.6||(d<=3.2&&s>=0.3)||(s>=0.6&&d<=5))&&(!best||sc<best.sc))best={i,k,sc}}return best});
   const asg={},used=new Set();for(const c of cand.filter(Boolean).sort((a,b)=>a.sc-b.sc)){if(used.has(c.k)||asg[c.i]!=null)continue;asg[c.i]=c.k;used.add(c.k)}
@@ -1397,26 +1751,39 @@ function fixDDR(rows,sup,totals){
     const fl={item:'ok',v:'ok'};let item=r.item||'',pack=r.pack;
     if(asg[i]!=null){if(asg[i]!==item){item=asg[i];fl.item='corr'}pack=K[item].pack||pack}
     else fl.item=(item.length===9&&/^11/.test(item))?'new':'unk';
-    if(!PACKS.includes(pack))fl.v='unc';
-    let exp=r.exp,rec=r.rec;const valid=v=>v!=null&&pack>0&&v%pack===0,fix1=v=>(v!=null&&pack>0&&v%pack!==0&&(+('1'+v))%pack===0)?+('1'+v):v;
+    if(pack&&!PACKS.includes(pack)){const s=String(pack);if(s.length>1&&s[0]==='1'&&PACKS.includes(+s.slice(1)))pack=+s.slice(1);else if(s.length>1&&s.endsWith('1')&&PACKS.includes(+s.slice(0,-1)))pack=+s.slice(0,-1)}
+    if(byCase&&!PACKS.includes(pack))fl.v='unc';
+    let exp=r.exp,rec=r.rec;const valid=v=>v!=null&&(!byCase||(pack>0&&v%pack===0)),fix1=v=>(byCase&&v!=null&&pack>0&&v%pack!==0&&(+('1'+v))%pack===0)?+('1'+v):v;
     let fixed=false;
     const packKnown=asg[i]!=null;
     if(pack){const e2=fix1(exp),r2=fix1(rec);if(e2!==exp||r2!==rec){fixed=true;if(fl.v==='ok')fl.v=packKnown?'corr':'unc'}exp=e2;rec=r2}
+    // una raya de la tabla leída como "1" (delante o detrás): si Esperado y Recibido solo difieren en eso, vale el más corto
+    const one=(a,b)=>a!=null&&b!=null&&String(a).length===String(b).length+1&&(String(a)==='1'+b||String(a)===b+'1');
+    if(one(exp,rec)&&valid(rec)){exp=rec;if(fl.v==='ok')fl.v='corr'}else if(one(rec,exp)&&valid(exp)){rec=exp;if(fl.v==='ok')fl.v='corr'}
     if(!valid(exp)&&valid(rec)){exp=rec;if(fl.v==='ok')fl.v='corr'}
     if(!valid(rec)){fl.v='unc';if(rec==null&&valid(exp))rec=exp}
     else if(exp!=null&&exp!==rec)fl.v='unc';
     return{item,desc:(K[item]&&K[item].desc)||r.desc||'',uom:r.uom||'EA',pack:pack||null,exp,rec,dmg:r.dmg||0,fl};
   });
   // si el total impreso coincide con la suma leída, las cantidades son confiables
-  if(totals&&totals.rec!=null&&out.reduce((a,x)=>a+(x.rec||0),0)===totals.rec)out.forEach(x=>{if(x.fl.v==='unc'&&x.pack)x.fl.v='corr'});
+  const sumOk=totals&&totals.rec!=null&&out.reduce((a,x)=>a+(x.rec||0),0)===totals.rec;
+  if(sumOk)out.forEach(x=>{if(x.fl.v==='unc'&&x.pack)x.fl.v='corr'});
+  // si el total impreso no cuadra (o no se leyó), ninguna cantidad queda como segura: una diferencia se confirma con el papel
+  else out.forEach(x=>{if(x.fl.v==='ok')x.fl.v='corr'});
   return out;
 }
-function setSup(v,sup){if(!sup||v.sup===sup)return;v.sup=sup;v.supName=SUP_NAMES[sup]||v.supName;if(v.scan)v.items=fixDDR(v.items,sup,v.totRead);persist()}
+function setSup(v,sup){if(!sup||v.sup===sup)return;v.sup=sup;v.supName=(SUPS[sup]&&SUPS[sup].name)||v.supName;if(v.scan)v.items=fixDDR(v.items,sup,v.totRead);persist()}
 function supFrom(code,name){
-  if(code&&(SEED_EQ[code]||(db.eq&&db.eq[code])))return code;
-  for(const [re,c] of SUP_BY_NAME)if(re.test(name||''))return c;
+  const n=fold(name).toUpperCase(),seen=db.sups||{};
+  if(code&&(SUPS[code]||SEED_EQ[code]||(db.eq&&db.eq[code])||seen[code]))return code;
+  for(const k in SUPS)if(SUPS[k].re.test(n))return k;
+  // código leído con un dígito de más o de menos (el 1 tenue de los escaneos)
+  if(code)for(const k in SUPS)if(codeDist(code,k)<=0.8)return k;
+  // un proveedor que ya pasó antes por la app: mismo nombre y código parecido
+  const W=supWords(name);for(const k in seen){const S2=supWords(seen[k]);if(W.some(w=>w.length>=4&&S2.includes(w))&&(!code||codeDist(code,k)<=1.4))return k}
   return code||'';
 }
+function rememberSup(code,name){if(!code||!name||SUPS[code])return;db.sups=db.sups||{};if(!db.sups[code])db.sups[code]=String(name).replace(/[^A-Za-z0-9 ,.\-]/g,' ').replace(/\s+/g,' ').trim()}
 
 /* ---------- Importar hoja: PDF de Oracle, PDF escaneado (puede ser el reporte diario) o fotos ---------- */
 $('#fddr').onchange=e=>{const fs=[...e.target.files];e.target.value='';if(fs.length)importDocs(fs)};
@@ -1444,7 +1811,11 @@ async function importDocsRun(files){
   try{busy('Preparando el lector…');await ocrLib();await FOCR.getWorker(t=>busy(t))}catch(err){busy(false);alert(err.message);return}
   let pages;try{pages=await expandPages(files)}catch(err){busy(false);alert('No pude abrir el archivo.');return}
   const info=[];
-  for(let k=0;k<pages.length;k++){busy('Revisando página '+(k+1)+' de '+pages.length+'…');try{const src=await pages[k].get(1600);info.push({k,...(await FOCR.classify(src,()=>{}))})}catch(e){info.push({k,type:'otro'})}}
+  for(let k=0;k<pages.length;k++){busy('Revisando página '+(k+1)+' de '+pages.length+'…');try{const src=await pages[k].get(1600);let c=await FOCR.classify(src,()=>{});
+    if(c.type==='otro'){const c2=await FOCR.classify(await pages[k].get(2600),()=>{},2400);if(c2.type!=='otro')c=c2}  // p. ej. un recibo pequeño en medio de la hoja
+    info.push({k,...c})}catch(e){info.push({k,type:'otro'})}}
+  // reporte diario de compras: número de orden, proveedor y unidades recibidas de cada orden del día
+  const resumen=[];for(const p of info.filter(x=>x.type==='resumen')){try{busy('Leyendo el reporte diario…');resumen.push(...parseResumen(await FOCR.text(await pages[p.k].get(2600),p.rot,2600)))}catch(e){}}
   const ddrPages=info.filter(x=>x.type==='ddr');
   if(!ddrPages.length){busy(false);alert(files.length===1&&!isPdf(files[0])?'No encontré una hoja de Oracle en esa foto. Tómala de frente, completa y con buena luz.':'No encontré hojas de Oracle (Direct Delivery Report) en el archivo.');return}
   const docs=[];let hdr=null,cur=null;
@@ -1452,29 +1823,30 @@ async function importDocsRun(files){
     const src=await pages[p.k].get(2600);
     const r=await FOCR.readDDR(src,{rotation:p.rot,header:hdr,progress:t=>busy(t+' · '+pages[p.k].name)});hdr=r.header||hdr;
     for(const h of r.pages){if(!h.rows.length)continue;
-      if((h.po&&h.po.length>=7)||!cur||cur.closed){cur={po:h.po||'',supCode:h.supCode,supName:h.supName,date:h.date,cont:h.cont,rows:[],totals:null,thumbs:[]};docs.push(cur)}
+      if((h.po&&h.po.length>=7)||!cur||cur.closed){cur={po:h.po||'',supCode:h.supCode,supName:h.supName,date:h.date,cont:h.cont,rows:[],totals:null,thumbs:[],page:p.k};docs.push(cur)}
       cur.rows.push(...h.rows);cur.thumbs.push(thumbOf(h.canvas));if(h.totals){cur.totals=h.totals;cur.closed=true}}
   }
-  const vers=[];
+  if(resumen.length)snapResumen(docs,resumen);
+  const vers=[],pageOf=new Map();
   for(const d of docs){
     const sup=supFrom(d.supCode,d.supName),items=fixDDR(d.rows,sup,d.totals);
-    const nm=SUP_NAMES[sup]||d.supName||'';
+    const nm=(SUPS[sup]&&SUPS[sup].name)||d.supName||'';
     const v=await saveVerDoc({po:d.po,sup,supName:nm,date:d.date,cont:d.cont,items,scan:true,totRead:d.totals||null,
       tot:{exp:items.reduce((a,i)=>a+(i.exp||0),0),rec:items.reduce((a,i)=>a+(i.rec||0),0),dmg:0}});
-    if(v){v._thumbs=d.thumbs;vers.push(v)}
+    if(v){v._thumbs=d.thumbs;pageOf.set(v,d.page);vers.push(v)}
   }
-  // facturas de Pepsi en el mismo archivo: se asignan a su orden
-  const facPages=info.filter(x=>x.type==='fac'&&x.pepsi);let added=0,skipped=0;
+  // facturas del mismo archivo, de cualquier proveedor: cada una va a su orden
+  const facPages=info.filter(x=>x.type==='fac');let added=0,skipped=0;
   if(vers.length&&facPages.length){
     for(let n=0;n<facPages.length;n++){const p=facPages[n],tag=' ('+(n+1)+' de '+facPages.length+')';
       try{
         const src=await pages[p.k].get(2600);busy('Leyendo factura'+tag+'…');
-        const r=await FOCR.read(src,{rotation:p.rot,progress:t=>busy(t+tag)});
-        let v=vers.find(x=>x.po&&r.po&&FOCR.lev(x.po,r.po)<=2)||(r.po?vers.find(x=>x.po&&FOCR.lev(x.po,r.po)<=3):null);
-        if(!v&&vers.length===1&&(!r.po||!vers[0].po))v=vers[0];
-        if(v&&r.po)(v._pos=v._pos||[]).push(r.po);
-        if(v&&!v.sup&&(p.pepsi||r.pepsi))setSup(v,'1511');
-        if(!v||!r.lines.length){skipped++;continue}
+        const r=await readInvoice(src,p,t=>busy(t+tag));
+        if(!r.lines.length){skipped++;continue}
+        const v=pickOrder(vers,r,p,pageOf);
+        if(!v){skipped++;continue}
+        if(r.po&&r.po.length===8)(v._pos=v._pos||[]).push(r.po);
+        if(!v.sup){const s=supOfText(r.text);if(s)setSup(v,s)}
         ver=v;busy(false);const res=await openReview(draftFrom(r,src));if(res==='saved')added++;if(res==='stop')break;
       }catch(e){skipped++;console.error('factura omitida',e)}
     }
@@ -1487,60 +1859,113 @@ async function importDocsRun(files){
   const msg=vers.length+(vers.length===1?' orden leída':' órdenes leídas')+(added?' · '+added+(added===1?' factura agregada':' facturas agregadas'):'')+(skipped?' · '+skipped+' páginas omitidas':'');
   if(vers.length===1)say2(msg);else alert(msg+'. Ábrelas en la lista para revisarlas.');
 }
+/* ¿A qué orden pertenece una factura? Número de orden, proveedor, productos en común y cercanía en el archivo */
+function pickOrder(vers,r,p,pageOf){
+  const txt=fold(r.text||'').toUpperCase(),s=supOfText(r.text),po=r.po||p.po||'',all=[];
+  for(const v of vers){let sc=0,ct=0;
+    if(po&&v.po){const d=FOCR.lev(po,v.po);sc+=d===0?10:(d<=1?7:(d<=2?4:0))}
+    if(s&&v.sup===s)sc+=4;else if(!s&&supWords(v.supName).some(w=>txt.includes(w)))sc+=3;else if(s&&v.sup&&SUPS[v.sup]&&v.sup!==s)sc-=4;
+    // productos en común: cada línea con su mejor fila de la hoja (una fila por línea)
+    let hit=0;const lines=r.lines.filter(l=>l.code||l.desc),rest=[],done=new Set(),used=new Set();
+    for(const f of v.facs)for(const l of f.lines)if(l.item)done.add(l.item);  // lo que ya cubren otras facturas de esa orden no cuenta
+    for(const i of v.items)if(done.has(i.item))used.add(i);
+    for(const l of lines){const e=eqLookup(v.sup,l,v.items),i=e&&v.items.find(x=>x.item===e.item&&!used.has(x));if(i){hit++;used.add(i)}else rest.push({l})}
+    for(const[,k]of pairAll(rest,v.items.filter(i=>!used.has(i)),supConv(v.sup),[]).m)hit+=Math.min(1,k.s);
+    if(lines.length){ct=hit/lines.length;sc+=3*ct}
+    const pg=pageOf.get(v);if(pg!=null){const d=pg-p.k;if(d>0&&d<=4)sc+=1.2/d;else if(d<0&&d>=-4)sc+=0.4/(-d)}
+    all.push({v,sc,ct})}
+  all.sort((a,b)=>b.sc-a.sc);const best=all[0],ct2=Math.max(0,...all.slice(1).map(x=>x.ct));
+  if(window.__dbg)console.log('DBG pickOrder',r.num,po,s,JSON.stringify(all.map(x=>[x.v.po,+x.sc.toFixed(2),+x.ct.toFixed(2)])));
+  if(!best)return null;
+  // sin número de orden ni proveedor reconocible: decide qué hoja tiene esos productos
+  return best.sc>=2||(best.ct>=0.3&&best.ct>=ct2*1.25)||vers.length===1?best.v:null;
+}
+/* Filas del "Reporte Diario de Compras": orden, proveedor y unidades recibidas */
+function parseResumen(t){
+  const out=[];
+  for(const ln of String(t||'').split('\n')){const m=ln.match(/(?:^|\s)(3[0-9OoIl|]{7})\b(.*)$/);if(!m)continue;
+    let rest=m[2].replace(/\d{1,2}\s*[-\/]\s*[a-zA-Z]{3}\s*[-\/]\s*\d{2,4}/,' ');const u=rest.match(/(\d{1,3}(?:[.,]\d{3})+|\d+)\s*\W*$/);if(!u)continue;
+    const name=rest.slice(0,u.index).replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ0-9 ,.\-]/g,' ').replace(/\s+/g,' ').trim();if(!/[A-Za-z]{3}/.test(name))continue;
+    out.push({po:FOCR.fixNum(m[1]),name,units:parseInt(u[1].replace(/[.,]/g,''),10)})}
+  return out;
+}
+/* Cada hoja leída se empareja con su fila del reporte diario: corrige el número de orden mal leído y da el total confiable */
+function snapResumen(docs,rows){
+  const cand=[];
+  docs.forEach((d,di)=>rows.forEach((r,ri)=>{let sc=0;const tot=d.totals&&d.totals.rec,exp=d.totals&&d.totals.exp,sum=d.rows.reduce((a,x)=>a+(x.rec||0),0);
+    // proveedor: si se distinguen los dos y no coinciden, no es esa orden
+    const a=supFrom(d.supCode,d.supName),b=supFrom('',r.name),ns=nameSim(d.supName,r.name);
+    if(a&&b&&SUPS[a]&&SUPS[b]){if(a!==b)return;sc+=4}else if(ns>=0.45)sc+=4;else if(ns<0.2&&supWords(d.supName).length&&supWords(r.name).length)return;
+    if(d.po){const l=FOCR.lev(d.po,r.po);sc+=[6,4,2,1][l]||0}
+    if(tot===r.units||sum===r.units||exp===r.units)sc+=5;else if(tot&&String(tot).includes(String(r.units)))sc+=2;
+    cand.push({di,ri,sc})}));
+  cand.sort((x,y)=>y.sc-x.sc);const ud=new Set(),ur=new Set();
+  for(const c of cand){if(c.sc<6||ud.has(c.di)||ur.has(c.ri))continue;ud.add(c.di);ur.add(c.ri);const d=docs[c.di],r=rows[c.ri];
+    d.po=r.po;d.totals={exp:d.totals&&d.totals.exp,rec:r.units,diario:true};if(!supFrom(d.supCode,d.supName)||!d.supName)d.supName=r.name}
+}
 async function saveVerDoc(d){
-  let v=d.po?db.fac.find(x=>x.po&&FOCR.lev(x.po,d.po)<=(d.scan?1:0)):null;
+  // misma orden solo si el número coincide exacto (en un mismo día hay órdenes que difieren en un dígito)
+  let v=d.po?db.fac.find(x=>x.po===d.po&&(!x.sup||!d.sup||x.sup===d.sup)):null;
   if(v){if(!confirm('Ya tienes la orden '+v.po+'. ¿Reemplazar su hoja y conservar las facturas cargadas?'))return null;const keep=v.facs;Object.assign(v,d,{facs:keep,po:v.po,upd:Date.now()})}
   else{v={id:uid(),...d,facs:[],created:Date.now()};db.fac.unshift(v);if(db.fac.length>MAXREC)db.fac.length=MAXREC}
   if(!d.scan)learnItems(v.sup,v.items);
+  rememberSup(v.sup,v.supName);
   persist();return v;
 }
 
 /* ---------- Comparación (la factura manda) ---------- */
 function verCompare(v){
-  const eq=eqFor(v.sup),K=knownItems(v.sup),rows=v.items.map(i=>({i,inv:0,cases:0,src:[],approx:false})),extra=[],byItem={};
-  rows.forEach(r=>{if(!byItem[r.i.item])byItem[r.i.item]=r});
-  for(const f of v.facs)for(const l of f.lines){
-    const m=lineItem(v,l,eq),pack=m.pack||1,u=(l.cant||0)*pack;
-    let r=m.item&&byItem[m.item];
-    if(!r&&m.item&&v.scan){// la hoja escaneada pudo leer mal el código: buscar por parecido
-      const kd=(K[m.item]||{}).desc||l.desc||'';let best=null;
-      const facItems=new Set();for(const ff of v.facs)for(const ll of ff.lines){const mm=lineItem(v,ll,eq);if(mm.item)facItems.add(mm.item)}
-      for(const x of rows){if(x.src.length||byItem[m.item]===x||(l.rej&&l.rej.includes(x.i.item)))continue;if(K[x.i.item]&&(facItems.has(x.i.item)||(x.i.fl&&x.i.fl.item!=='unk')))continue;
-        const d=codeDist(x.i.item,m.item),s=FOCR.descSim(kd,x.i.desc),sc=d-2*s-(x.i.pack===pack?0.5:0);if((d<=2.6||s>=0.45)&&(!best||sc<best.sc))best={x,sc}}
-      if(best){r=best.x;r.approx=true}
-    }
-    if(r){r.inv+=u;r.cases+=(l.cant||0);r.src.push({f,l,pack,item:m.item})}
-    else extra.push({f,l,pack,u,item:m.item});
-  }
+  const{L,conv}=verResolve(v),rows=v.items.map(i=>({i,inv:0,cases:0,src:[],approx:false,guess:false,weak:false})),R=new Map(),extra=[];rows.forEach(r=>R.set(r.i,r));
+  for(const x of L){const r=x.i&&R.get(x.i),fo=factorOf(v.sup,conv,x.l,x.i),u=(x.l.cant||0)*(fo.f||0);
+    if(r){r.inv+=u;r.cases+=(x.l.cant||0);r.src.push({f:x.f,l:x.l,pack:fo.f,item:x.item,guess:fo.guess,how:x.how});if(x.approx)r.approx=true;if(fo.guess)r.guess=true;if(x.how==='auto?')r.weak=true}
+    else extra.push({f:x.f,l:x.l,pack:fo.f,u,item:x.item})}
   for(const r of rows){const rec=r.i.rec,fv=r.i.fl&&r.i.fl.v,unc=fv==='unc'||(fv==='corr'&&rec!==r.inv)||(v.scan&&r.i.fl&&r.i.fl.item==='unk');
-    if(r.inv===0)r.st=(rec||0)===0?'none':'noinv';
-    else if(rec==null||r.approx||unc)r.st='check';
-    else r.st=rec===r.inv?'ok':(rec===0?'norec':'diff');}
-  return{rows,extra,eq,inv:rows.reduce((a,r)=>a+r.inv,0)+extra.reduce((a,x)=>a+x.u,0),rec:v.items.reduce((a,i)=>a+(i.rec||0),0),cases:v.facs.reduce((a,f)=>a+f.lines.reduce((b,l)=>b+(l.cant||0),0),0)};
+    if(!r.src.length)r.st=(rec||0)===0?'none':'noinv';
+    else if(rec==null||r.approx||r.weak||r.guess||unc)r.st='check';
+    else r.st=rec===r.inv?'ok':(rec===0?'norec':'diff')}
+  return{rows,extra,conv,inv:rows.reduce((a,r)=>a+r.inv,0)+extra.reduce((a,x)=>a+x.u,0),rec:v.items.reduce((a,i)=>a+(i.rec||0),0),cases:v.facs.reduce((a,f)=>a+f.lines.reduce((b,l)=>b+(l.cant||0),0),0)};
 }
+const umOf=l=>{const u=String(l.um||'').toUpperCase();return u==='DSP'?'display':(u==='EA'||u==='UND'||u==='UN'?'unidad':(/^P(Q|O)TE|PAQ/.test(u)?'paquete':(u?u.toLowerCase():'bulto')))};
+const qtyTxt=s=>s.l.cant+' '+(s.l.um?s.l.um:(s.l.cant===1?'bulto':'bultos'))+(s.pack&&s.pack!==1?' × '+s.pack:'')+(s.pack?' = '+fmtN(s.l.cant*s.pack)+' und':'');
 function renderVer(){
   const v=ver,c=verCompare(v),dud=v.scan?v.items.filter(i=>i.fl&&(i.fl.v==='unc'||i.fl.item==='unk')).length:0;
-  $('#vHead').innerHTML='<b>Orden '+esc(v.po||'?')+'</b> · '+esc(shortSup(v.supName))+'<br><span class="mu">'+(v.date?'Recibido '+esc(v.date)+' · ':'')+(v.cont?'Contenedor '+esc(v.cont)+' · ':'')+v.items.length+' productos · '+fmtN(c.rec)+' und recibidas'+(v.scan?' · hoja escaneada':'')+'</span>'+
-    (v.scan&&v.totRead&&v.totRead.rec!=null?'<br><span class="mu">Total impreso en la hoja: '+fmtN(v.totRead.rec)+' und '+(v.totRead.rec===c.rec?'<span class="tok">✔ cuadra con lo leído</span>':'<span class="tbad">· lo leído suma '+fmtN(c.rec)+'</span>')+'</span>':'')+
+  $('#vHead').innerHTML='<b>Orden '+esc(v.po||'?')+'</b> · '+esc(shortSup(v.supName)||'proveedor sin leer')+'<br><span class="mu">'+(v.date?'Recibido '+esc(v.date)+' · ':'')+(v.cont?'Contenedor '+esc(v.cont)+' · ':'')+v.items.length+' productos · '+fmtN(c.rec)+' und recibidas'+(v.scan?' · hoja escaneada':'')+'</span>'+
+    (v.scan&&v.totRead&&v.totRead.rec!=null?'<br><span class="mu">'+(v.totRead.diario?'Total recibido según el reporte diario: ':'Total impreso en la hoja: ')+fmtN(v.totRead.rec)+' und '+(v.totRead.rec===c.rec?'<span class="tok">✔ cuadra con lo leído</span>':'<span class="tbad">· lo leído suma '+fmtN(c.rec)+'</span>')+'</span>':'')+
+    (v.facs.length?'<div style="margin-top:8px"><label for="vConv" style="margin:0 0 4px">Las facturas de este proveedor vienen en</label><select id="vConv">'+(c.conv?'':'<option value="" selected>¿? (no se pudo deducir)</option>')+['cajas','igual','producto'].map(k=>'<option value="'+k+'"'+(c.conv===k?' selected':'')+'>'+CONV_TXT[k]+'</option>').join('')+'</select></div>':'')+
     '<div class="row" style="margin-top:8px"><button id="vHoja" class="sec sm">📄 Ver y corregir la hoja'+(dud?' ('+dud+' con dudas)':'')+'</button></div>';
   $('#fl').innerHTML=v.facs.length?v.facs.map(f=>{const s=f.lines.reduce((a,l)=>a+(l.cant||0),0),okT=f.total!=null&&+f.total===s;
-    return '<div class="it hr"><div class="inf"><b>Factura '+esc(f.num||f.ctrl||'s/n')+'</b><small>'+f.lines.length+' líneas · '+s+' cajas'+(f.total!=null&&f.total!==''?(okT?' · <span class="tok">✔ total coincide</span>':' · <span class="tbad">total impreso '+esc(f.total)+'</span>'):'')+(f.po&&v.po&&f.po!==v.po?' · <span class="tbad">orden '+esc(f.po)+'</span>':'')+'</small></div><button class="sec sm" data-fed="'+f.id+'">Editar</button><button class="sec sm" data-fdel="'+f.id+'" aria-label="Borrar">🗑</button></div>'}).join(''):'<p class="mu">Aún no hay facturas. Agrégalas con foto, desde la galería o un PDF escaneado.</p>';
+    return '<div class="it hr"><div class="inf"><b>Factura '+esc(f.num||f.ctrl||'s/n')+'</b><small>'+f.lines.length+' líneas · suma de cantidades '+s+(f.total!=null&&f.total!==''?(okT?' · <span class="tok">✔ total coincide</span>':' · <span class="tbad">total impreso '+esc(f.total)+'</span>'):'')+(f.po&&v.po&&f.po!==v.po?' · <span class="tbad">orden '+esc(f.po)+'</span>':'')+'</small></div><button class="sec sm" data-fed="'+f.id+'">Editar</button><button class="sec sm" data-fdel="'+f.id+'" aria-label="Borrar">🗑</button></div>'}).join(''):'<p class="mu">Aún no hay facturas. Agrégalas con foto, desde la galería o un PDF escaneado.</p>';
   const iss=c.rows.filter(r=>r.st==='diff'||r.st==='norec'),chk=c.rows.filter(r=>r.st==='check'),pend=c.rows.filter(r=>r.st==='noinv'),ok=c.rows.filter(r=>r.st==='ok');
   const nIss=iss.length+c.extra.length;
   $('#vSum').innerHTML='<div class="chips"><span class="chip ok">✔ '+ok.length+' coinciden</span><span class="chip '+(nIss?'bad':'')+'">⚠ '+nIss+' diferencias</span>'+(chk.length?'<span class="chip bad">🔎 '+chk.length+' por confirmar</span>':'')+'<span class="chip">⏳ '+pend.length+' sin factura</span></div>'+
-    '<p class="mu" style="margin:6px 0 0">Facturado: <b>'+fmtN(c.inv)+' und</b> ('+fmtN(c.cases)+' cajas) · Hoja: <b>'+fmtN(c.rec)+' und</b> recibidas'+(c.inv===c.rec&&v.facs.length&&!nIss&&!chk.length?' · <span class="tok">✔ cuadra</span>':'')+'</p>';
+    '<p class="mu" style="margin:6px 0 0">Facturado: <b>'+fmtN(c.inv)+' und</b> · Hoja: <b>'+fmtN(c.rec)+' und</b> recibidas'+(c.inv===c.rec&&v.facs.length&&!nIss&&!chk.length?' · <span class="tok">✔ cuadra</span>':'')+'</p>';
   const codes=r=>r.src.map(s=>s.l.code).filter((x,k,a)=>x&&a.indexOf(x)===k).join(', ');
-  const row=(r,cls,txt,btn)=>'<div class="it '+cls+'"><div class="inf"><b>'+esc(r.i.desc||'(sin descripción)')+'</b><small>Ítem '+esc(r.i.item||'?')+' · caja de '+(r.i.pack||'?')+(codes(r)?' · '+esc(codes(r)):'')+'</small><small>'+txt+'</small>'+(btn||'')+'</div></div>';
+  const row=(r,cls,txt,btn)=>'<div class="it '+cls+'"><div class="inf"><b>'+esc(r.i.desc||'(sin descripción)')+'</b><small>Ítem '+esc(r.i.item||'?')+(r.i.pack?' · caja de '+r.i.pack:'')+(codes(r)?' · cód. '+esc(codes(r)):'')+'</small><small>'+txt+'</small>'+(btn||'')+'</div></div>';
+  const bt=(a,k,t,sec)=>'<button class="'+(sec?'sec ':'')+'sm" data-'+a+'="'+k+'">'+t+'</button>',bx=s=>'<div class="row" style="margin-top:6px;gap:6px;flex-wrap:wrap">'+s+'</div>';
   let h='';
-  chk.forEach(r=>{const k=c.rows.indexOf(r);h+=row(r,'over','🔎 Factura '+fmtN(r.inv)+' und ('+fmtN(r.cases)+' cajas) · la hoja se leyó '+(r.i.rec==null?'sin cantidad':fmtN(r.i.rec)+' und')+(r.approx?' en un código parecido ('+esc(r.i.item)+')':'')+'. Míralo en el papel:',
-    '<div class="row" style="margin-top:6px;gap:6px;flex-wrap:wrap"><button class="sm" data-cok="'+k+'">✔ La hoja dice '+fmtN(r.inv)+'</button><button class="sec sm" data-cfix="'+k+'">✏ Dice otra cantidad</button>'+(r.approx?'<button class="sec sm" data-crej="'+k+'">✖ No es este producto</button>':'')+'</div>')});
+  chk.forEach(r=>{const k=c.rows.indexOf(r);
+    if(r.weak){const s=r.src.find(s=>s.how==='auto?');h+=row(r,'over','🔎 ¿Es el mismo producto? En la factura: «'+esc(s.l.desc||s.l.ocrDesc||s.l.code||'?')+'» · '+esc(qtyTxt(s))+'. La hoja dice '+(r.i.rec==null?'sin cantidad':fmtN(r.i.rec)+' und')+'.',bx(bt('pok',k,'✔ Sí, es este')+bt('prej',k,'✖ No es este',1)));return}
+    if(r.guess){const s=r.src.find(s=>s.guess),um=umOf(s.l);h+=row(r,'over','🔎 Factura: '+s.l.cant+' '+esc(s.l.um||(s.l.cant===1?um:um+'s'))+' · la hoja dice '+(r.i.rec==null?'sin cantidad':fmtN(r.i.rec)+' und')+'. '+(s.pack?'Eso da '+s.pack+' und por '+um+'. ¿Es así?':'¿Cuántas unidades trae cada '+um+'?'),bx((s.pack?bt('gok',k,'✔ Sí, '+s.pack+' por '+um):'')+bt('gfix',k,'✏ '+(s.pack?'Otra cantidad':'Escribir cuántas'),!!s.pack)));return}
+    h+=row(r,'over','🔎 Factura '+fmtN(r.inv)+' und · la hoja se leyó '+(r.i.rec==null?'sin cantidad':fmtN(r.i.rec)+' und')+(r.approx?' en un código parecido ('+esc(r.i.item)+')':'')+'. Míralo en el papel:',
+      bx(bt('cok',k,'✔ La hoja dice '+fmtN(r.inv))+bt('cfix',k,'✏ Dice otra cantidad',1)+(r.approx?bt('crej',k,'✖ No es este producto',1):'')))});
   const eqv=eqFor(v.sup),Kv=knownItems(v.sup);
-  c.extra.forEach((x,k)=>{h+='<div class="it over"><div class="inf"><b>'+esc((Kv[x.item]||{}).desc||x.l.desc||(eqv[x.l.code]||{}).desc||('Código '+x.l.code))+'</b><small>Factura '+esc(x.f.num||'s/n')+' · código '+esc(x.l.code||'?')+' · '+(x.l.cant||0)+' cajas'+(x.pack>1?' × '+x.pack+' = '+fmtN(x.u)+' und':'')+'</small><small>'+(x.item?'❌ Facturado, el ítem '+esc(x.item)+' no está en la hoja':'❓ Código sin emparejar')+'</small>'+(x.item&&v.scan?'<div class="row" style="margin-top:6px;gap:6px"><button class="sm" data-xadd="'+k+'">＋ Sí está en la hoja</button><button class="sec sm" data-xpair="'+k+'">Emparejar</button></div>':'')+'</div>'+(x.item&&v.scan?'':'<button class="sm" data-xpair="'+k+'">Emparejar</button>')+'</div>'});
-  iss.forEach(r=>{h+=row(r,'over',r.st==='norec'?'❌ Facturado '+fmtN(r.inv)+' und, la hoja dice 0 recibido':'⚠ Factura '+fmtN(r.inv)+' und ('+fmtN(r.cases)+' cajas) · Hoja '+fmtN(r.i.rec)+' und · '+(r.inv>r.i.rec?'sobran ':'faltan ')+fmtN(Math.abs(r.inv-r.i.rec))+' und')});
+  c.extra.forEach((x,k)=>{h+='<div class="it over"><div class="inf"><b>'+esc((Kv[x.item]||{}).desc||x.l.desc||(eqv[x.l.code]||{}).desc||('Código '+x.l.code))+'</b><small>Factura '+esc(x.f.num||'s/n')+(x.l.code?' · código '+esc(x.l.code):'')+' · '+esc(qtyTxt(x))+'</small><small>'+(x.item?'❌ Facturado, el ítem '+esc(x.item)+' no está en la hoja':'❓ Sin emparejar con la hoja (o no se recibió)')+'</small>'+(x.item&&v.scan?bx(bt('xadd',k,'＋ Sí está en la hoja')+bt('xpair',k,'Emparejar',1)):'')+'</div>'+(x.item&&v.scan?'':'<button class="sm" data-xpair="'+k+'">Emparejar</button>')+'</div>'});
+  iss.forEach(r=>{h+=row(r,'over',r.st==='norec'?'❌ Facturado '+fmtN(r.inv)+' und, la hoja dice 0 recibido':'⚠ Factura '+fmtN(r.inv)+' und · Hoja '+fmtN(r.i.rec)+' und · '+(r.inv>r.i.rec?'faltan ':'sobran ')+fmtN(Math.abs(r.inv-r.i.rec))+' und')});
   pend.forEach(r=>{h+=row(r,'',(v.facs.length?'⏳ ':'')+'Recibido '+fmtN(r.i.rec)+' und · no está en las facturas cargadas')});
-  if(ok.length)h+='<button class="lnk" id="tOk" style="margin:8px 0">'+(verShowOk?'Ocultar':'Ver')+' las '+ok.length+' que coinciden</button>'+(verShowOk?ok.map(r=>row(r,'done','✔ '+fmtN(r.inv)+' und ('+fmtN(r.cases)+' cajas)')).join(''):'');
+  if(ok.length)h+='<button class="lnk" id="tOk" style="margin:8px 0">'+(verShowOk?'Ocultar':'Ver')+' las '+ok.length+' que coinciden</button>'+(verShowOk?ok.map(r=>row(r,'done','✔ '+fmtN(r.inv)+' und'+(r.src.length===1&&r.src[0].pack&&r.src[0].pack!==1?' ('+esc(qtyTxt(r.src[0]))+')':''))).join(''):'');
   $('#vRes').innerHTML=h;
 }
+document.addEventListener('change',e=>{if(e.target.id!=='vConv'||!ver||!e.target.value)return;const val=e.target.value;if(ver.sup){db.conv=db.conv||{};db.conv[ver.sup]=val}else ver.conv=val;persist();renderVer()});
+$('#vRes').addEventListener('click',e=>{
+  const b=e.target.closest('[data-pok],[data-prej],[data-gok],[data-gfix]');if(!b)return;
+  const k=+(b.dataset.pok||b.dataset.prej||b.dataset.gok||b.dataset.gfix),r=verCompare(ver).rows[k];if(!r)return;
+  if(b.dataset.pok!=null)for(const s of r.src){if(s.how!=='auto?')continue;s.l.item=r.i.item;s.l.pa='';saveEq(ver.sup,lineKey(s.l),r.i.item,s.l.pack&&!s.l.fg?s.l.pack:null,s.l.ocrDesc||s.l.desc)}
+  if(b.dataset.prej!=null)for(const s of r.src){if(s.how!=='auto?')continue;s.l.rej=[...(s.l.rej||[]),r.i.item];s.l.item='';s.l.pa=''}
+  if(b.dataset.gok!=null)for(const s of r.src){if(!s.guess||!s.pack)continue;s.l.pack=s.pack;s.l.fg=false;saveEq(ver.sup,lineKey(s.l),s.item||r.i.item,s.pack,s.l.ocrDesc||s.l.desc)}
+  if(b.dataset.gfix!=null){const s=r.src.find(s=>s.guess)||r.src[0];const t=prompt('¿Cuántas unidades trae cada '+umOf(s.l)+' de «'+(s.l.desc||r.i.desc)+'»?',s.pack||'');if(t==null)return;const n=parseInt(t,10);if(!(n>0))return;
+    s.l.pack=n;s.l.fg=false;saveEq(ver.sup,lineKey(s.l),s.item||r.i.item,n,s.l.ocrDesc||s.l.desc)}
+  persist();renderVer();
+});
 $('#vRes').addEventListener('click',e=>{
   const rj=e.target.closest('[data-crej]');
   if(rj){const r=verCompare(ver).rows[+rj.dataset.crej];if(r){for(const s of r.src){s.l.rej=[...(s.l.rej||[]),r.i.item]}persist();renderVer()}return}
@@ -1548,8 +1973,9 @@ $('#vRes').addEventListener('click',e=>{
   const r=verCompare(ver).rows[+(ok||fx).dataset[ok?'cok':'cfix']];if(!r)return;
   let val=r.inv;
   if(fx){const t=prompt('¿Cuántas unidades recibidas dice la hoja para '+(r.i.desc||r.i.item)+'?',r.i.rec==null?'':r.i.rec);if(t==null)return;val=parseInt(t,10);if(isNaN(val))return}
-  r.i.rec=val;if(r.i.exp==null)r.i.exp=val;r.i.fl={...(r.i.fl||{}),v:'user'};if(ok&&r.i.fl.item==='unk')r.i.fl.item='user';
-  if(ok&&r.approx&&r.src[0]&&r.src[0].item){r.i.item=r.src[0].item;r.i.fl.item='user';const K=knownItems(ver.sup);if(K[r.i.item])r.i.desc=K[r.i.item].desc}
+  r.i.rec=val;if(r.i.exp==null)r.i.exp=val;r.i.fl={...(r.i.fl||{}),v:'user'};if(r.i.fl.item==='unk')r.i.fl.item='user';
+  // si la hoja tenía el código mal leído, confirmar la cantidad también confirma que es ese producto
+  if(r.approx&&r.src[0]&&r.src[0].item){r.i.item=r.src[0].item;r.i.fl.item='user';const K=knownItems(ver.sup);if(K[r.i.item])r.i.desc=K[r.i.item].desc}
   learnItems(ver.sup,[r.i]);persist();renderVer();
 });
 document.addEventListener('click',e=>{if(e.target.id==='vHoja')openHoja()});
