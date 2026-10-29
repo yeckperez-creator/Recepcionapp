@@ -14,7 +14,7 @@ const CLAVE = 'rcp1';                    // debe ser igual a DRIVE_KEY en la app
 const CARPETA = 'Recepciones (app)';
 
 const COLS = [
-  ['id', 'ID'], ['enviado', 'Guardado'], ['sup', 'Supervisor'], ['tienda', 'Tienda'], ['tipo', 'Tipo'],
+  ['id', 'ID'], ['enviado', 'Guardado'], ['sup', 'Recibe'], ['tienda', 'Tienda'], ['tipo', 'Tipo'],
   ['nombre', 'Recepción'], ['orden', 'Orden de entrega'], ['fechaNota', 'Fecha de la nota'],
   ['inicio', 'Inicio'], ['fin', 'Fin'], ['minAct', 'Minutos activos'], ['minTot', 'Minutos de inicio a fin'],
   ['lineas', 'Líneas de bultos'], ['bultosEsp', 'Bultos esperados'], ['bultosRec', 'Bultos recibidos'],
@@ -23,7 +23,7 @@ const COLS = [
   ['cestasEsp', 'Cestas esperadas'], ['cestasRec', 'Cestas recibidas'], ['cestasFalt', 'Cestas no recibidas'],
   ['cam', 'Registros con cámara'], ['man', 'Registros a mano'], ['undo', 'Correcciones'], ['archivo', 'Excel']
 ];
-const DCOLS = ['ID', 'Fin', 'Supervisor', 'Tienda', 'Recepción', 'Tipo de diferencia', 'Contenedor', 'Ítem',
+const DCOLS = ['ID', 'Fin', 'Recibe', 'Tienda', 'Recepción', 'Tipo de diferencia', 'Contenedor', 'Ítem',
   'Descripción', 'Esperado', 'Recibido', 'Diferencia'];
 
 function doPost(e) {
